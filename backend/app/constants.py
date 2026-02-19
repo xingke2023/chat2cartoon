@@ -41,6 +41,9 @@ ONE_DAY_IN_SECONDS = 60 * 60 * 24
 IMAGE_SIZE_LIMIT = 10 * 1024 * 1024  # 10MB
 MAX_STORY_BOARD_NUMBER = 6
 
+MODE_CHILDREN_STORY = "children_story"
+MODE_INSURANCE_CASE = "insurance_case"
+
 DEFAULT_AUDIO_TONE = "zh_female_shuangkuaisisi_moon_bigtts"
 VALID_TONES = [
     "zh_female_cancan_mars_bigtts",

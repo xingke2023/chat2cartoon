@@ -10,6 +10,26 @@
 // limitations under the License.
 
 import { ErrorString, PhaseMapType, UserConfirmationDataKey, VideoGeneratorTaskPhase } from './types';
+
+export const MODE_CHILDREN_STORY = 'children_story';
+export const MODE_INSURANCE_CASE = 'insurance_case';
+
+export const MODE_CONFIG = {
+  [MODE_CHILDREN_STORY]: {
+    name: '儿童故事',
+    assistantName: '互动双语视频生成器',
+    description: '为3-6岁小朋友生成睡前动画故事',
+    openingRemark: '你好！请告诉我一个故事主题，我来为小朋友创作一个有趣的动画故事~',
+    openingQuestions: ['讲一个睡前要刷牙的故事', '晚上一直看电视不去睡觉', '按时起床不能赖床'],
+  },
+  [MODE_INSURANCE_CASE]: {
+    name: '保险案例',
+    assistantName: '保险案例动画生成器',
+    description: '将真实保险案例转化为生动的动画故事',
+    openingRemark: '你好！请描述一个保险案例场景，我来将它制作成动画故事~',
+    openingQuestions: ['车祸导致骨折的理赔案例', '重疾险保障乳腺癌患者', '意外险赔付意外伤害'],
+  },
+};
 import {
   combinationFirstFrameDescription,
   combinationRoleDescription,

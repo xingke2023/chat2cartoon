@@ -21,7 +21,7 @@ from volcenginesdkarkruntime.types.chat.chat_completion_chunk import ChoiceDelta
     ChoiceDeltaToolCallFunction
 
 from app.clients.t2i import T2IClient, T2IException
-from app.constants import MAX_STORY_BOARD_NUMBER, API_KEY, T2V_ENDPOINT_ID
+from app.constants import MAX_STORY_BOARD_NUMBER, API_KEY, T2V_ENDPOINT_ID, MODE_INSURANCE_CASE
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -70,13 +70,16 @@ class RoleImageGenerator(Generator):
         super().__init__(request, mode)
 
         t2i_api_key = API_KEY
+        content_mode = ""
         if request.metadata:
             t2i_api_key = request.metadata.get("t2i_api_key", API_KEY)
+            content_mode = request.metadata.get("mode", "")
         self.t2i_client = T2IClient(t2i_api_key)
         self.t2i_model = T2V_ENDPOINT_ID
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        self.image_style_suffix = "卡通风格插图，现代都市卡通风格，3D渲染。" if content_mode == MODE_INSURANCE_CASE else "卡通风格插图，3D渲染。"
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         role_description_completion = self.phase_finder.get_role_descriptions()
@@ -144,7 +147,7 @@ class RoleImageGenerator(Generator):
 
     async def _generate_image(self, index: int, role_descriptions: List[RoleDescription]):
         try:
-            prompt = f"{role_descriptions[index].description}卡通风格插图，3D渲染。"
+            prompt = f"{role_descriptions[index].description}{self.image_style_suffix}"
             images = self.t2i_client.image_generation(prompt=prompt, model=self.t2i_model)
         except T2IException as e:
             ERROR(f"failed to generate image, code: {e.code}, message: {e}")

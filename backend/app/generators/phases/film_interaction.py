@@ -28,12 +28,13 @@ from app.clients.tts import TTSClient, TextRequest
 from app.clients.tts import TTS_DEFAULT_SPEAKER
 from app.clients.vlm import VLMClient
 from app.constants import VLM_ENDPOINT_ID, FILM_INTERACTION_TIMEOUT_TIME_IN_SECONDS, IMAGE_SIZE_LIMIT, TTS_APP_KEY, \
-    TTS_ACCESS_KEY
+    TTS_ACCESS_KEY, MODE_INSURANCE_CASE
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.logger import INFO, ERROR
 from app.message_utils import extract_dict_from_message
 from app.mode import Mode
+from app.generators.prompts.insurance_case import FILM_INTERACTION_SYSTEM_PROMPT as INSURANCE_FILM_INTERACTION_PROMPT
 
 FILM_INTERACTION_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -88,6 +89,8 @@ class FilmInteractionGenerator(Generator):
         self.request = request
         self.phase_finder = PhaseFinder(request)
         self.mode = mode
+        content_mode = request.metadata.get("mode", "") if request.metadata else ""
+        self.system_prompt = INSURANCE_FILM_INTERACTION_PROMPT if content_mode == MODE_INSURANCE_CASE else FILM_INTERACTION_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         for message in self.request.messages:
@@ -116,7 +119,7 @@ class FilmInteractionGenerator(Generator):
         user_message = self._get_user_message()
 
         messages = [
-            FILM_INTERACTION_SYSTEM_PROMPT,
+            self.system_prompt,
             ArkMessage(role="assistant", content=f"phase={Phase.SCRIPT.value}\n{script}"),
             ArkMessage(role="user", content="下一步"),
             ArkMessage(role="assistant", content=f"phase={Phase.STORY_BOARD.value}\n{storyboards}"),

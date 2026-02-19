@@ -119,6 +119,8 @@ export const sendMessageAndUpdateState = (
     messages: { content: string | (TextContent | ImageContent)[]; role: 'user' | 'assistant' | 'system' }[];
     model: string;
     stream: boolean;
+    metadata?: Record<string, any>;
+    [key: string]: any;
   },
   updateResponseMessage: UpdateAssistantResponse,
   updateDebugStore: (

@@ -18,13 +18,14 @@ from arkitect.core.errors import InvalidParameter
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
 from app.logger import ERROR
 from app.mode import Mode
 from app.output_parsers import parse_first_frame_description
+from app.generators.prompts.insurance_case import FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT as INSURANCE_FIRST_FRAME_DESC_PROMPT
 
 FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -85,13 +86,16 @@ class FirstFrameDescriptionGenerator(Generator):
     def __init__(self, request: ArkChatRequest, mode: Mode.NORMAL):
         super().__init__(request, mode)
         chat_endpoint_id = LLM_ENDPOINT_ID
+        content_mode = ""
         if request.metadata:
             chat_endpoint_id = request.metadata.get("chat_endpoint_id", LLM_ENDPOINT_ID)
+            content_mode = request.metadata.get("mode", "")
 
         self.llm_client = LLMClient(chat_endpoint_id)
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        self.system_prompt = INSURANCE_FIRST_FRAME_DESC_PROMPT if content_mode == MODE_INSURANCE_CASE else FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         if self.mode == Mode.CORRECTION:
@@ -114,7 +118,7 @@ class FirstFrameDescriptionGenerator(Generator):
                 raise InvalidParameter("messages", "storyboards not found")
 
             messages = [
-                FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT,
+                self.system_prompt,
                 ArkMessage(role="assistant", content=f"phase={Phase.SCRIPT.value}\n{script}"),
                 ArkMessage(role="user", content="下一步"),
                 ArkMessage(role="assistant", content=f"phase={Phase.STORY_BOARD.value}\n{storyboards}"),

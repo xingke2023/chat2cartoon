@@ -14,11 +14,12 @@ from typing import AsyncIterable
 from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE
 from app.generators.base import Generator
 from app.generators.phase import Phase
 from app.generators.phases.common import get_correction_completion_chunk
 from app.mode import Mode
+from app.generators.prompts.insurance_case import SCRIPT_SYSTEM_PROMPT as INSURANCE_SCRIPT_PROMPT
 
 SCRIPT_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -77,19 +78,22 @@ class ScriptGenerator(Generator):
         super().__init__(request, mode)
 
         chat_endpoint_id = LLM_ENDPOINT_ID
+        content_mode = ""
         if request.metadata:
             chat_endpoint_id = request.metadata.get("chat_endpoint_id", LLM_ENDPOINT_ID)
+            content_mode = request.metadata.get("mode", "")
 
         self.llm_client = LLMClient(chat_endpoint_id)
         self.request = request
         self.mode = mode
+        self.system_prompt = INSURANCE_SCRIPT_PROMPT if content_mode == MODE_INSURANCE_CASE else SCRIPT_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         if self.mode == Mode.CORRECTION:
             yield get_correction_completion_chunk(self.request.messages[-1], Phase.SCRIPT)
         else:
             messages = [
-                SCRIPT_SYSTEM_PROMPT,
+                self.system_prompt,
             ]
             messages.extend(self.request.messages)
 

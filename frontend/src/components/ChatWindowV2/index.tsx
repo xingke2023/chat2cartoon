@@ -241,6 +241,7 @@ export const ChatWindowV2 = ({ children, onSendMessage, assistant, url }: IProps
       messages: [...meaningfulMessages],
       model: 'ep-20260219054427-j546d',
       stream: true,
+      ...(assistant?.Extra?.Mode ? { metadata: { mode: assistant.Extra.Mode } } : {}),
     };
 
     onSendMessage?.();

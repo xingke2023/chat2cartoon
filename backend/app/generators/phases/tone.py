@@ -18,13 +18,14 @@ from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
 from app.logger import INFO
 from app.mode import Mode
 from app.output_parsers import parse_tone
+from app.generators.prompts.insurance_case import TONE_SYSTEM_PROMPT as INSURANCE_TONE_PROMPT
 
 TONE_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -115,13 +116,16 @@ class ToneGenerator(Generator):
         super().__init__(request, mode)
 
         chat_endpoint_id = LLM_ENDPOINT_ID
+        content_mode = ""
         if request.metadata:
             chat_endpoint_id = request.metadata.get("chat_endpoint_id", LLM_ENDPOINT_ID)
+            content_mode = request.metadata.get("mode", "")
 
         self.llm_client = LLMClient(chat_endpoint_id)
         self.request = request
         self.mode = mode
         self.phase_finder = PhaseFinder(request)
+        self.system_prompt = INSURANCE_TONE_PROMPT if content_mode == MODE_INSURANCE_CASE else TONE_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         if self.mode == Mode.CORRECTION:
@@ -129,7 +133,7 @@ class ToneGenerator(Generator):
         else:
             storyboard, _ = self.phase_finder.get_storyboards()
             messages = [
-                TONE_SYSTEM_PROMPT,
+                self.system_prompt,
                 ArkMessage(role="user", content=storyboard),
             ]
             INFO(f"storyboard num: {len(storyboard)}")
