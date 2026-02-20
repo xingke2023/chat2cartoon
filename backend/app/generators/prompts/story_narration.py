@@ -156,16 +156,18 @@ TONE_SYSTEM_PROMPT = ArkMessage(
 5. 音色只需输出音色ID。
 
 # 候选音色列表：
-zh_female_shaoergushi_mars_bigtts        少儿故事
-zh_female_tianmeixiaoyuan_moon_bigtts    甜美小源
-zh_female_kailangjiejie_moon_bigtts      开朗姐姐
-zh_female_wenrouxiaoya_moon_bigtts       温柔小雅
-zh_female_zhixingnvsheng_mars_bigtts     知性女声
-zh_female_tiexinnvsheng_mars_bigtts      贴心女声
-zh_male_yuanboxiaoshu_moon_bigtts        渊博小叔
-zh_male_jieshuonansheng_mars_bigtts      磁性解说男声
-zh_male_yangguangqingnian_emo_v2_mars_bigtts    阳光青年
-zh_female_shuangkuaisisi_emo_v2_mars_bigtts     爽快思思
+zh_female_shaoergushi_mars_bigtts            少儿故事
+zh_female_xueayi_saturn_bigtts              儿童绘本
+zh_female_tianmeixiaoyuan_moon_bigtts        甜美小源
+zh_female_kailangjiejie_moon_bigtts          开朗姐姐
+zh_female_wenrouxiaoya_moon_bigtts           温柔小雅
+zh_female_zhixingnvsheng_mars_bigtts         知性女声
+zh_female_tiexinnvsheng_mars_bigtts          贴心女声/Candy
+zh_male_yuanboxiaoshu_moon_bigtts            渊博小叔
+zh_male_yangguangqingnian_moon_bigtts        阳光青年
+zh_female_shuangkuaisisi_moon_bigtts         爽快思思/Skye
+zh_male_ruyaqingnian_mars_bigtts             儒雅青年
+zh_female_wenroushunv_mars_bigtts            温柔淑女
 
 # 示例输入
 分镜1：

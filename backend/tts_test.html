@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音色测试工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f7; color: #1d1d1f; min-height: 100vh; }
+
+  .header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header .badge { background: #f0f0f5; color: #6e6e73; font-size: 12px; padding: 3px 8px; border-radius: 20px; }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .card h2 { font-size: 14px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #3a3a3c; }
+  textarea { width: 100%; border: 1px solid #d2d2d7; border-radius: 8px; padding: 10px 12px; font-size: 14px; resize: vertical; min-height: 80px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+  textarea:focus { border-color: #0071e3; }
+  input[type="text"] { width: 100%; border: 1px solid #d2d2d7; border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+  input[type="text"]:focus { border-color: #0071e3; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: #0071e3; color: #fff; }
+  .btn-primary:hover { background: #0077ed; }
+  .btn-primary:disabled { background: #b0c8f0; cursor: not-allowed; }
+  .btn-secondary { background: #f5f5f7; color: #1d1d1f; border: 1px solid #d2d2d7; }
+  .btn-secondary:hover { background: #e8e8ed; }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .tone-result { margin-top: 12px; padding: 12px; background: #f5f5f7; border-radius: 8px; display: none; }
+  .tone-result .tone-name { font-size: 16px; font-weight: 600; color: #0071e3; }
+  .tone-result .tone-id { font-size: 12px; color: #6e6e73; font-family: monospace; margin-top: 2px; }
+  .tone-result .tone-tag { font-size: 12px; color: #3a3a3c; margin-top: 4px; }
+
+  .tone-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; max-height: 320px; overflow-y: auto; }
+  .tone-item { padding: 8px 10px; border: 1px solid #d2d2d7; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .tone-item:hover { border-color: #0071e3; background: #f0f6ff; }
+  .tone-item.selected { border-color: #0071e3; background: #e8f0fe; }
+  .tone-item .t-name { font-size: 13px; font-weight: 500; }
+  .tone-item .t-tag { font-size: 11px; color: #6e6e73; margin-top: 2px; line-height: 1.3; }
+
+  .audio-section { margin-top: 16px; }
+  audio { width: 100%; margin-top: 8px; border-radius: 8px; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+  .spinner-dark { border-color: rgba(0,0,0,0.15); border-top-color: #0071e3; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .divider { grid-column: 1 / -1; border: none; border-top: 1px solid #e5e5e5; margin: 4px 0; }
+
+  .actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  .status { font-size: 13px; color: #6e6e73; }
+  .status.error { color: #ff3b30; }
+
+  .selected-display { padding: 10px 12px; background: #f0f6ff; border: 1px solid #b3d4fb; border-radius: 8px; margin-top: 12px; display: none; }
+  .selected-display .sd-name { font-size: 15px; font-weight: 600; color: #0071e3; }
+  .selected-display .sd-id { font-size: 11px; color: #6e6e73; font-family: monospace; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>音色测试工具</h1>
+  <span class="badge">Chat2Cartoon</span>
+</div>
+
+<div class="container">
+
+  <!-- 左列：输入 + 自动选音色 -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+
+    <div class="card">
+      <h2>文案输入</h2>
+      <div style="margin-bottom:12px;">
+        <label>文案内容</label>
+        <textarea id="text" placeholder="输入要合成语音的文案，例如：从前，有个可爱的小女孩，大家都叫她小红帽。"></textarea>
+      </div>
+      <div>
+        <label>角色/场景特点</label>
+        <input type="text" id="desc" placeholder="例如：可爱女童，天真活泼；或：成熟男性，专业权威" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>自动推荐音色</h2>
+      <p style="font-size:13px; color:#6e6e73; margin-bottom:12px;">根据文案和特点，由 AI 自动从音色库中选择最合适的音色。</p>
+      <button class="btn btn-primary" id="selectBtn" onclick="selectTone()">
+        <span id="selectBtnText">AI 推荐音色</span>
+      </button>
+      <div class="tone-result" id="toneResult">
+        <div class="tone-name" id="resultName"></div>
+        <div class="tone-id" id="resultId"></div>
+        <div class="tone-tag" id="resultTag"></div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btn btn-secondary" onclick="useRecommended()">使用此音色</button>
+        </div>
+      </div>
+      <div class="status error" id="selectError" style="margin-top:8px;"></div>
+    </div>
+
+  </div>
+
+  <!-- 右列：音色库 + 合成 -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+
+    <div class="card">
+      <h2>音色库 <span style="font-weight:400; font-size:12px; color:#6e6e73;" id="toneCount"></span></h2>
+      <div class="tone-grid" id="toneGrid">
+        <div style="color:#6e6e73; font-size:13px;">加载中…</div>
+      </div>
+      <div class="selected-display" id="selectedDisplay">
+        <div class="sd-name" id="selectedName"></div>
+        <div class="sd-id" id="selectedId"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>语音合成</h2>
+      <div style="margin-bottom:12px;">
+        <label>voice_type <span style="font-weight:400; color:#6e6e73;">（可直接输入音色 ID）</span></label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="voiceInput" placeholder="例如：zh_female_qinqienvsheng_moon_bigtts" oninput="onVoiceInput()" />
+          <button class="btn btn-secondary" onclick="applyVoiceInput()" style="white-space:nowrap;">使用</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="ttsBtn" onclick="synthesize()" disabled>
+          <span id="ttsBtnText">合成语音</span>
+        </button>
+        <span class="status" id="ttsStatus"></span>
+      </div>
+      <div class="audio-section" id="audioSection" style="display:none;">
+        <label>播放结果</label>
+        <audio id="audioPlayer" controls></audio>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const API = '';
+let selectedTone = null;
+let allTones = [];
+
+async function loadTones() {
+  const res = await fetch(`${API}/tones`);
+  allTones = await res.json();
+  document.getElementById('toneCount').textContent = `共 ${allTones.length} 种`;
+  renderTones(allTones);
+}
+
+function renderTones(tones) {
+  const grid = document.getElementById('toneGrid');
+  grid.innerHTML = tones.map(t => `
+    <div class="tone-item" id="ti-${t.id}" onclick="selectToneItem('${t.id}', '${t.name}', '${t.tag}')">
+      <div class="t-name">${t.name}</div>
+      <div class="t-tag">${t.tag}</div>
+    </div>
+  `).join('');
+}
+
+function selectToneItem(id, name, tag) {
+  if (selectedTone) {
+    const prev = document.getElementById(`ti-${selectedTone}`);
+    if (prev) prev.classList.remove('selected');
+  }
+  selectedTone = id;
+  const el = document.getElementById(`ti-${id}`);
+  if (el) {
+    el.classList.add('selected');
+    el.scrollIntoView({ block: 'nearest' });
+  }
+  document.getElementById('selectedName').textContent = name;
+  document.getElementById('selectedId').textContent = id;
+  document.getElementById('selectedDisplay').style.display = 'block';
+  document.getElementById('voiceInput').value = id;
+  document.getElementById('ttsBtn').disabled = false;
+}
+
+function onVoiceInput() {
+  const val = document.getElementById('voiceInput').value.trim();
+  document.getElementById('ttsBtn').disabled = !val;
+}
+
+function applyVoiceInput() {
+  const id = document.getElementById('voiceInput').value.trim();
+  if (!id) return;
+  // 取消上一个选中高亮
+  if (selectedTone) {
+    const prev = document.getElementById(`ti-${selectedTone}`);
+    if (prev) prev.classList.remove('selected');
+  }
+  selectedTone = id;
+  // 如果在音色库里找得到就高亮
+  const info = allTones.find(t => t.id === id);
+  const el = document.getElementById(`ti-${id}`);
+  if (el) {
+    el.classList.add('selected');
+    el.scrollIntoView({ block: 'nearest' });
+  }
+  document.getElementById('selectedName').textContent = info ? info.name : id;
+  document.getElementById('selectedId').textContent = id;
+  document.getElementById('selectedDisplay').style.display = 'block';
+  document.getElementById('ttsBtn').disabled = false;
+}
+
+async function selectTone() {
+  const text = document.getElementById('text').value.trim();
+  const desc = document.getElementById('desc').value.trim();
+  if (!text) { alert('请输入文案内容'); return; }
+
+  const btn = document.getElementById('selectBtn');
+  const btnText = document.getElementById('selectBtnText');
+  document.getElementById('selectError').textContent = '';
+  document.getElementById('toneResult').style.display = 'none';
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> 推荐中…';
+
+  try {
+    const res = await fetch(`${API}/select-tone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, description: desc }),
+    });
+    const data = await res.json();
+    document.getElementById('resultName').textContent = data.info ? data.info.name : data.tone;
+    document.getElementById('resultId').textContent = data.tone;
+    document.getElementById('resultTag').textContent = data.info ? data.info.tag : '';
+    document.getElementById('toneResult').style.display = 'block';
+    // 高亮对应音色
+    selectToneItem(data.tone, data.info ? data.info.name : data.tone, data.info ? data.info.tag : '');
+  } catch(e) {
+    document.getElementById('selectError').textContent = '推荐失败：' + e.message;
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'AI 推荐音色';
+  }
+}
+
+function useRecommended() {
+  const id = document.getElementById('resultId').textContent;
+  const name = document.getElementById('resultName').textContent;
+  const tag = document.getElementById('resultTag').textContent;
+  selectToneItem(id, name, tag);
+}
+
+async function synthesize() {
+  const text = document.getElementById('text').value.trim();
+  if (!text) { alert('请输入文案内容'); return; }
+  if (!selectedTone) { alert('请选择音色'); return; }
+
+  const btn = document.getElementById('ttsBtn');
+  const btnText = document.getElementById('ttsBtnText');
+  const status = document.getElementById('ttsStatus');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> 合成中…';
+  status.textContent = '';
+  document.getElementById('audioSection').style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, tone: selectedTone }),
+    });
+    const data = await res.json();
+    if (data.audio) {
+      const audio = document.getElementById('audioPlayer');
+      audio.src = `data:audio/mp3;base64,${data.audio}`;
+      document.getElementById('audioSection').style.display = 'block';
+      audio.play();
+      status.textContent = '合成成功';
+      status.className = 'status';
+    }
+  } catch(e) {
+    status.textContent = '合成失败：' + e.message;
+    status.className = 'status error';
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = '合成语音';
+    if (selectedTone) btn.disabled = false;
+  }
+}
+
+loadTones();
+</script>
+</body>
+</html>

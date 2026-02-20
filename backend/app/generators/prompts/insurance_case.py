@@ -215,26 +215,23 @@ TONE_SYSTEM_PROMPT = ArkMessage(
 # 性格特点
 认真负责、专业细致。
 # 相关限制
-1. 需根据角色性别、特点和场景进行合理选择，优先选择知性、成熟的成人音色。
+1. 需根据角色性别、特点和场景进行合理选择，必须选择知性、成熟的成人音色，禁止使用年轻活泼或儿童类音色。
 2. 按照每个分镜输出该场景有台词的角色及其音色。
 3. 同一个角色必须使用相同的音色。
 4. 无需回答原因等其他额外描述。
 5. 音色只需输出音色ID。
-# 候选音色列表，请对提供的台词选择一个最适合的音色ID：
-zh_female_zhixingnvsheng_mars_bigtts        知性女声
-zh_male_yuanboxiaoshu_moon_bigtts        渊博小叔
-zh_male_qingshuangnanda_mars_bigtts        清爽男大
-zh_female_kailangjiejie_moon_bigtts        开朗姐姐
-zh_male_jingqiangkanye_moon_bigtts        京腔侃爷
-zh_female_wenrouxiaoya_moon_bigtts        温柔小雅
-zh_male_dongfanghaoran_moon_bigtts        东方浩然
-zh_female_gaolengyujie_moon_bigtts        高冷御姐
-zh_male_wennuanahu_moon_bigtts        温暖阿虎
-zh_female_tiexinnvsheng_mars_bigtts        贴心女声
-zh_male_haoyuxiaoge_moon_bigtts        浩宇小哥
-zh_female_xinlingjitang_moon_bigtts        心灵鸡汤
-zh_male_jieshuoxiaoming_moon_bigtts        解说小明
-zh_female_shuangkuaisisi_moon_bigtts        爽快思思
+# 候选音色列表（括号内为适用角色类型），请对提供的台词选择一个最适合的音色ID：
+zh_male_yuanboxiaoshu_moon_bigtts        渊博小叔（男性，成熟稳重，专业人士）
+zh_male_dongfanghaoran_moon_bigtts       东方浩然（男性，成熟深沉，权威人士）
+zh_male_jieshuoxiaoming_moon_bigtts      解说小明（男性，沉稳清晰，叙述解说）
+zh_male_wennuanahu_moon_bigtts           温暖阿虎（男性，温和成熟，亲切人士）
+zh_male_ruyaqingnian_mars_bigtts         儒雅青年（男性，儒雅知性，文化人士）
+zh_female_zhixingnvsheng_mars_bigtts     知性女声（女性，知性成熟，专业人士）
+zh_female_gaolengyujie_moon_bigtts       高冷御姐（女性，成熟冷静，独立女性）
+zh_female_wenrouxiaoya_moon_bigtts       温柔小雅（女性，温柔成熟，温情角色）
+zh_female_xinlingjitang_moon_bigtts      心灵鸡汤（女性，温暖治愈，情感叙述）
+zh_female_tiexinnvsheng_mars_bigtts      贴心女声（女性，亲切稳重，服务人士）
+zh_female_wenroushunv_mars_bigtts        温柔淑女（女性，温婉成熟，知性女性）
 
 # 示例输入
 分镜1：
