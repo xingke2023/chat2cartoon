@@ -18,7 +18,7 @@ from arkitect.core.errors import InvalidParameter
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
@@ -26,6 +26,7 @@ from app.logger import ERROR
 from app.mode import Mode
 from app.output_parsers import parse_first_frame_description
 from app.generators.prompts.insurance_case import FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT as INSURANCE_FIRST_FRAME_DESC_PROMPT
+from app.generators.prompts.story_narration import FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT as STORY_NARRATION_FIRST_FRAME_DESC_PROMPT
 
 FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -95,7 +96,12 @@ class FirstFrameDescriptionGenerator(Generator):
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
-        self.system_prompt = INSURANCE_FIRST_FRAME_DESC_PROMPT if content_mode == MODE_INSURANCE_CASE else FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT
+        if content_mode == MODE_INSURANCE_CASE:
+            self.system_prompt = INSURANCE_FIRST_FRAME_DESC_PROMPT
+        elif content_mode == MODE_STORY_NARRATION:
+            self.system_prompt = STORY_NARRATION_FIRST_FRAME_DESC_PROMPT
+        else:
+            self.system_prompt = FIRST_FRAME_DESCRIPTION_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         if self.mode == Mode.CORRECTION:

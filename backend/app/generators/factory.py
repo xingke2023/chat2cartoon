@@ -11,6 +11,7 @@
 
 from arkitect.core.component.llm import ArkChatRequest
 
+from app.constants import MODE_STORY_NARRATION
 from app.generators.base import Generator
 from app.generators.phase import Phase
 from app.generators.phases.audio import AudioGenerator
@@ -19,7 +20,12 @@ from app.generators.phases.film_interaction import FilmInteractionGenerator
 from app.generators.phases.first_frame_description import FirstFrameDescriptionGenerator
 from app.generators.phases.first_frame_image import FirstFrameImageGenerator
 from app.generators.phases.initiation import InitiationGenerator
+from app.generators.phases.script import ScriptGenerator
+from app.generators.phases.storyboard import StoryBoardGenerator
+from app.generators.phases.role_description import RoleDescriptionGenerator
 from app.generators.phases.role_image import RoleImageGenerator
+from app.generators.phases.skip_generator import SkipVideoDescriptionGenerator, SkipVideoGenerator
+from app.generators.phases.storybook_film import StorybookFilmGenerator
 from app.generators.phases.tone import ToneGenerator
 from app.generators.phases.video import VideoGenerator
 from app.generators.phases.video_description import VideoDescriptionGenerator
@@ -43,6 +49,18 @@ generator_map = {
     Phase.FILM_INTERACTION: FilmInteractionGenerator,
 }
 
+# story_narration mode: directly routes to specific generators (no LLM intent classification needed),
+# skips VideoDescription and Video, uses storybook film composer instead
+story_narration_generator_map = {
+    **generator_map,
+    Phase.SCRIPT: ScriptGenerator,
+    Phase.STORY_BOARD: StoryBoardGenerator,
+    Phase.ROLE_DESCRIPTION: RoleDescriptionGenerator,
+    Phase.VIDEO_DESCRIPTION: SkipVideoDescriptionGenerator,
+    Phase.VIDEO: SkipVideoGenerator,
+    Phase.FILM: StorybookFilmGenerator,
+}
+
 
 class GeneratorFactory:
     phase: Phase
@@ -51,7 +69,15 @@ class GeneratorFactory:
         self.phase = phase
 
     def get_generator(self, request: ArkChatRequest, mode: Mode) -> Generator:
-        g_class = generator_map.get(self.phase)
+        content_mode = ""
+        if request.metadata:
+            content_mode = request.metadata.get("mode", "")
+
+        if content_mode == MODE_STORY_NARRATION:
+            g_class = story_narration_generator_map.get(self.phase)
+        else:
+            g_class = generator_map.get(self.phase)
+
         if not g_class:
             raise ValueError(f'Phase {self.phase} not supported')
 

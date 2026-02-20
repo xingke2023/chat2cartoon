@@ -2,6 +2,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  @media (max-width: 480px) {
+    max-width: 100vw;
+    overflow: clip;
+  }
+}
+
+.content-wrapper {
+  @media (max-width: 480px) {
+    max-width: calc(100vw - 24px);
+    overflow: clip;
+  }
 }
 
 .link-line {

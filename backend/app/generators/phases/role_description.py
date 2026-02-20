@@ -14,12 +14,13 @@ from typing import AsyncIterable
 from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
 from app.mode import Mode
 from app.generators.prompts.insurance_case import ROLE_DESCRIPTION_SYSTEM_PROMPT as INSURANCE_ROLE_DESC_PROMPT
+from app.generators.prompts.story_narration import ROLE_DESCRIPTION_SYSTEM_PROMPT as STORY_NARRATION_ROLE_DESC_PROMPT
 
 ROLE_DESCRIPTION_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -74,7 +75,12 @@ class RoleDescriptionGenerator(Generator):
         self.request = request
         self.mode = mode
         self.phase_finder = PhaseFinder(request)
-        self.system_prompt = INSURANCE_ROLE_DESC_PROMPT if content_mode == MODE_INSURANCE_CASE else ROLE_DESCRIPTION_SYSTEM_PROMPT
+        if content_mode == MODE_INSURANCE_CASE:
+            self.system_prompt = INSURANCE_ROLE_DESC_PROMPT
+        elif content_mode == MODE_STORY_NARRATION:
+            self.system_prompt = STORY_NARRATION_ROLE_DESC_PROMPT
+        else:
+            self.system_prompt = ROLE_DESCRIPTION_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         if self.mode == Mode.CORRECTION:

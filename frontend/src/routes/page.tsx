@@ -16,9 +16,14 @@ import VideoGenerator from '@/module/VideoGenerator';
 
 import './index.css';
 import { GetVideoGenTask } from '@/services/getVideoGenTask';
-import { MODE_CHILDREN_STORY, MODE_INSURANCE_CASE, MODE_CONFIG } from '@/module/VideoGenerator/constants';
+import { MODE_CHILDREN_STORY, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_CONFIG, DEFAULT_EXTRA_INFO } from '@/module/VideoGenerator/constants';
+
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || '';
 
 const Index = () => {
+  const [authed, setAuthed] = useState<boolean>(!ACCESS_PASSWORD);
+  const [inputPwd, setInputPwd] = useState('');
+  const [pwdError, setPwdError] = useState(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const storeKey =
     localStorage.getItem('ark-interactive-video-store-key') || uuidV4();
@@ -34,6 +39,82 @@ const Index = () => {
   const handleBack = () => {
     setSelectedMode(null);
   };
+
+  const handleLogin = () => {
+    if (inputPwd === ACCESS_PASSWORD) {
+      setAuthed(true);
+      setPwdError(false);
+    } else {
+      setPwdError(true);
+    }
+  };
+
+  if (!authed) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 16,
+            padding: '40px 36px',
+            width: '90vw',
+            maxWidth: 340,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 20,
+          }}
+        >
+          <div style={{ fontSize: 40 }}>🔒</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#333' }}>请输入访问密码</div>
+          <input
+            type="password"
+            value={inputPwd}
+            onChange={e => { setInputPwd(e.target.value); setPwdError(false); }}
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            placeholder="请输入密码"
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              border: `1px solid ${pwdError ? '#f5576c' : '#ddd'}`,
+              borderRadius: 8,
+              fontSize: 15,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          {pwdError && (
+            <div style={{ color: '#f5576c', fontSize: 13, marginTop: -12 }}>密码错误，请重试</div>
+          )}
+          <button
+            onClick={handleLogin}
+            style={{
+              width: '100%',
+              padding: '11px 0',
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            进入
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedMode) {
     const config = MODE_CONFIG[selectedMode as keyof typeof MODE_CONFIG];
@@ -84,6 +165,8 @@ const Index = () => {
                 },
                 Extra: {
                   Mode: selectedMode,
+                  Models: DEFAULT_EXTRA_INFO.Models,
+                  Tones: DEFAULT_EXTRA_INFO.Tones,
                 },
               }}
               botUrl="/api/v3/bots/chat/completions"
@@ -145,16 +228,19 @@ const Index = () => {
           <div
             style={{
               display: 'flex',
-              gap: 24,
+              gap: 16,
               flexWrap: 'wrap',
               justifyContent: 'center',
+              width: '100%',
+              padding: '0 8px',
+              boxSizing: 'border-box' as const,
             }}
           >
             {/* 儿童故事卡片 */}
             <div
               onClick={() => handleSelectMode(MODE_CHILDREN_STORY)}
               style={{
-                width: 280,
+                width: 280, minWidth: 260, maxWidth: 320, flex: 1,
                 background: '#fff',
                 borderRadius: 16,
                 padding: '32px 24px',
@@ -225,7 +311,7 @@ const Index = () => {
             <div
               onClick={() => handleSelectMode(MODE_INSURANCE_CASE)}
               style={{
-                width: 280,
+                width: 280, minWidth: 260, maxWidth: 320, flex: 1,
                 background: '#fff',
                 borderRadius: 16,
                 padding: '32px 24px',
@@ -282,6 +368,77 @@ const Index = () => {
                   marginTop: 8,
                   padding: '10px 24px',
                   background: 'linear-gradient(135deg, #f093fb, #f5576c)',
+                  color: '#fff',
+                  borderRadius: 24,
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                开始创作
+              </div>
+            </div>
+
+            {/* 讲故事卡片 */}
+            <div
+              onClick={() => handleSelectMode(MODE_STORY_NARRATION)}
+              style={{
+                width: 280, minWidth: 260, maxWidth: 320, flex: 1,
+                background: '#fff',
+                borderRadius: 16,
+                padding: '32px 24px',
+                cursor: 'pointer',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 12px 40px rgba(0,0,0,0.18)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.12)';
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 56,
+                  lineHeight: 1,
+                }}
+              >
+                🇭🇰
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: '#333',
+                    marginBottom: 8,
+                  }}
+                >
+                  港险案例分镜制作
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: '#888',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  将港险案例制作成
+                  <br />
+                  配音分镜故事视频
+                </div>
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '10px 24px',
+                  background: 'linear-gradient(135deg, #43e97b, #38f9d7)',
                   color: '#fff',
                   borderRadius: 24,
                   fontSize: 14,

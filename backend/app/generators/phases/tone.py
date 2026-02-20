@@ -18,7 +18,7 @@ from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
@@ -26,6 +26,9 @@ from app.logger import INFO
 from app.mode import Mode
 from app.output_parsers import parse_tone
 from app.generators.prompts.insurance_case import TONE_SYSTEM_PROMPT as INSURANCE_TONE_PROMPT
+from app.generators.prompts.story_narration import TONE_SYSTEM_PROMPT as STORY_NARRATION_TONE_PROMPT
+
+_STORY_NARRATION_MODE = MODE_STORY_NARRATION
 
 TONE_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -124,8 +127,14 @@ class ToneGenerator(Generator):
         self.llm_client = LLMClient(chat_endpoint_id)
         self.request = request
         self.mode = mode
+        self.content_mode = content_mode
         self.phase_finder = PhaseFinder(request)
-        self.system_prompt = INSURANCE_TONE_PROMPT if content_mode == MODE_INSURANCE_CASE else TONE_SYSTEM_PROMPT
+        if content_mode == MODE_INSURANCE_CASE:
+            self.system_prompt = INSURANCE_TONE_PROMPT
+        elif content_mode == MODE_STORY_NARRATION:
+            self.system_prompt = STORY_NARRATION_TONE_PROMPT
+        else:
+            self.system_prompt = TONE_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         if self.mode == Mode.CORRECTION:
@@ -145,6 +154,18 @@ class ToneGenerator(Generator):
                 completion += chunk.choices[0].delta.content
 
             tones = parse_tone(completion)
+
+            # In story_narration mode, the LLM may paraphrase the dialogue.
+            # Overwrite line/line_en with the verbatim text from StoryBoard to keep
+            # audio and subtitles exactly consistent with the original story.
+            if self.content_mode == _STORY_NARRATION_MODE:
+                _, storyboards = self.phase_finder.get_storyboards()
+                for tone in tones:
+                    if tone.index < len(storyboards):
+                        sb = storyboards[tone.index]
+                        tone.line = sb.lines
+                        tone.line_en = sb.lines_en
+
             tones_json = {
                 "tones": [t.model_dump() for t in tones]
             }

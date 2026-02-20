@@ -56,7 +56,7 @@ const BaseFlow = (props: Props) => {
               {item.title !== null && contentNode && (
                 <div className={classNames(styles.linkLine, { [styles.linkLineActive]: isActive })} />
               )}
-              {contentNode && <div>{contentNode}</div>}
+              {contentNode && <div className={styles.contentWrapper}>{contentNode}</div>}
             </div>
           );
         })}

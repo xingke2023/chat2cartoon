@@ -359,6 +359,7 @@ const RenderedMessagesProvider = (props: PropsWithChildren<Props>) => {
           UserConfirmationDataKey.Tones,
           UserConfirmationDataKey.Videos,
           UserConfirmationDataKey.Audios,
+          UserConfirmationDataKey.FirstFrameImages,
         ]);
       }
       default: {
@@ -447,6 +448,20 @@ const RenderedMessagesProvider = (props: PropsWithChildren<Props>) => {
       // 更新状态
       // 视频状态另有地方更新
       updateRunningPhaseStatus(RunningPhaseStatus.Success);
+    } else {
+      // PhaseVideo: if videos list is empty (e.g. story_narration mode skips video generation),
+      // mark success immediately instead of waiting for afterLoad callbacks that will never fire
+      try {
+        const messageItem = newMessage.versions[newMessage.currentVersion].find(
+          item => item.type === EMessageType.Message,
+        );
+        if (messageItem) {
+          const parsedData = JSON.parse(messageItem.content);
+          if (Array.isArray(parsedData?.videos) && parsedData.videos.length === 0) {
+            updateRunningPhaseStatus(RunningPhaseStatus.Success);
+          }
+        }
+      } catch {}
     }
 
     // 更新用户所选的信息
@@ -543,6 +558,21 @@ const RenderedMessagesProvider = (props: PropsWithChildren<Props>) => {
 
     // 发起下一次对话
     // PhaseVideo 需要轮询等待生成完成，需要手动发起下一步
+    // 例外：videos 为空（story_narration 模式跳过了视频生成），直接推进到下一阶段
+    if (phase === VideoGeneratorTaskPhase.PhaseVideo && autoNextRef.current) {
+      try {
+        const messageItem = newMessage.versions[newMessage.currentVersion].find(
+          item => item.type === EMessageType.Message,
+        );
+        if (messageItem) {
+          const parsedData = JSON.parse(messageItem.content);
+          if (Array.isArray(parsedData?.videos) && parsedData.videos.length === 0) {
+            proceedNextPhase(phase);
+          }
+        }
+      } catch {}
+    }
+
     if (
       [
         VideoGeneratorTaskPhase.PhaseRoleDescription,

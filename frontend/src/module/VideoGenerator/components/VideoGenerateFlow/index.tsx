@@ -841,6 +841,8 @@ const VideoGenerateFlow = (props: Props) => {
           <div id={FlowPhase.VideoEdit}>
             {runningPhase === VideoGeneratorTaskPhase.PhaseFilm && runningPhaseStatus !== RunningPhaseStatus.Success ? (
               <LoadingFilm runningPhaseStatus={runningPhaseStatus} />
+            ) : runningPhase === VideoGeneratorTaskPhase.PhaseFilm && runningPhaseStatus === RunningPhaseStatus.Success ? (
+              <span>{'✅ 视频剪辑完成'}</span>
             ) : (
               '5.视频剪辑'
             )}

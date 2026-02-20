@@ -69,7 +69,10 @@ const CardScrollList = ({ list, isActive, id }: Props) => {
           <IconLeft fontSize={20} onClick={handleScrollLeft} />
         </div>
       )}
-      <div className={styles.listWrapper} id={id}>
+      <div
+        className={styles.listWrapper}
+        id={id}
+      >
         {list}
       </div>
     </div>

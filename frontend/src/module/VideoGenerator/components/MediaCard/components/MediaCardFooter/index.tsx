@@ -68,10 +68,10 @@ const MediaCardFooter = ({
         </Popover>
       ) : null}
     </div>
-    <div className={styles.model}>
+    {/* <div className={styles.model}>
       <img src={imgUrl} />
       <div className={styles.name}>{modelName}</div>
-    </div>
+    </div> */}
   </div>
 );
 

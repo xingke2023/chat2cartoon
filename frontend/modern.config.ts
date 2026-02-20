@@ -49,6 +49,7 @@ export default defineConfig({
       'process.env.ARK_API_KEY': process.env.ARK_API_KEY,
       'process.env.TTS_ACCESS_TOKEN': process.env.TTS_ACCESS_TOKEN,
       'process.env.TTS_APP_ID': process.env.TTS_APP_ID,
+      'process.env.ACCESS_PASSWORD': process.env.ACCESS_PASSWORD,
     }
   },
   plugins: [

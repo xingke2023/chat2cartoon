@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Progress } from '@arco-design/web-react';
+import { Progress, Spin } from '@arco-design/web-react';
 
 
 import styles from './index.module.less';
@@ -57,19 +57,21 @@ const LoadingFilm = (props: Props) => {
   return (
     <div className={styles.loadingContainer}>
       {runningPhaseStatus === RunningPhaseStatus.Pending && (
-        <Progress
-          percent={percent}
-          color={{
-            '0%': '#ce63ff',
-            '40%': '#0093ff',
-            '100%': '#0060ff',
-          }}
-          className={styles.progress}
-          size="mini"
-          showText={false}
-        />
+        <>
+          <Spin size={16} />
+          <Progress
+            percent={percent}
+            color={{
+              '0%': '#ce63ff',
+              '40%': '#0093ff',
+              '100%': '#0060ff',
+            }}
+            className={styles.progress}
+            size="mini"
+            showText={false}
+          />
+        </>
       )}
-
       <span>{'视频剪辑中'}</span>
     </div>
   );

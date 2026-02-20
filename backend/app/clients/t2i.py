@@ -45,14 +45,15 @@ class T2IClient:
     def __init__(self, t2i_api_key: str) -> None:
         self.t2i_client = Ark(api_key=t2i_api_key, region="cn-beijing")
 
-    def image_generation(self, prompt: str, model: str) -> List[str]:
+    def image_generation(self, prompt: str, model: str, size: Optional[str] = None) -> List[str]:
         """
         API Docs: https://www.volcengine.com/docs/82379/1541523
+        size: e.g. "768x1344" for 9:16 portrait, "1344x768" for 16:9 landscape (default)
         """
-        images = self.t2i_client.images.generate(
-            model=model,
-            prompt=prompt
-        )
+        kwargs = dict(model=model, prompt=prompt)
+        if size:
+            kwargs["size"] = size
+        images = self.t2i_client.images.generate(**kwargs)
         return [item.url for item in images.data]
 
 

@@ -104,12 +104,7 @@ const AssistantMessage = (message: AssistantMessageProps) => {
           ) : null}
         </div>
         <div className={styles.info}>
-          {modelInfo?.modelName ? (
-            <div className={styles.model}>
-              <img src={modelInfo?.imgSrc || DoubaoImg} />
-              <div className={styles.name}>{modelInfo?.displayName}</div>
-            </div>
-          ) : null}
+          {/* model info hidden */}
         </div>
       </div>
       {topMessage.finish && topMessage.isLastMessage && topMessage.phase ? (

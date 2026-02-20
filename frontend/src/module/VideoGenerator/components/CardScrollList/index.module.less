@@ -7,6 +7,21 @@
   background: #ecf0f3;
   scrollbar-width: none;
   border-radius: 12px;
+  -webkit-overflow-scrolling: touch;
+
+  // Prevent flex children from shrinking — they must overflow to enable scrolling
+  > * {
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 480px) {
+    max-width: 100%;
+    padding: 12px;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .colorful-border {
@@ -23,12 +38,26 @@
   max-width: 940px;
   display: inline-block;
   position: relative;
+
+  @media (max-width: 480px) {
+    max-width: 100%;
+    width: 100%;
+    display: block;
+    overflow: clip;
+  }
 }
 
 .border {
   max-width: 940px;
   display: inline-block;
   position: relative;
+
+  @media (max-width: 480px) {
+    max-width: 100%;
+    width: 100%;
+    display: block;
+    overflow: clip;
+  }
 }
 
 .icon-right {
