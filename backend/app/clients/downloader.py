@@ -31,7 +31,11 @@ def _get_image_extension_from_response(response):
             'image/webp': 'webp',
             'image/bmp': 'bmp',
             'image/tiff': 'tiff',
-            # Add more mappings if needed
+            'audio/mpeg': 'mp3',
+            'audio/mp3': 'mp3',
+            'audio/wav': 'wav',
+            'audio/ogg': 'ogg',
+            'video/mp4': 'mp4',
         }
         return extension_map.get(content_type, None)
     return None

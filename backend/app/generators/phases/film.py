@@ -120,17 +120,25 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return header + "\n".join(lines) + "\n"
 
 
+def _strip_trailing_punct_cn(text: str) -> str:
+    return text.rstrip('。！？，、；：')
+
+
+def _strip_trailing_punct_en(text: str) -> str:
+    return text.rstrip('.!?,;:')
+
+
 def _split_subtitle_by_sentences_cn(line: str, start: float, end: float) -> List[tuple]:
     parts = re.split(r'(?<=[。！？，、；：])', line)
     parts = [p for p in parts if p.strip()]
     if not parts:
-        return [((start, end), line)]
+        return [((start, end), _strip_trailing_punct_cn(line))]
     total_len = sum(len(p) for p in parts)
     subtitles = []
     t = start
     for p in parts:
         duration = (end - start) * len(p) / total_len
-        subtitles.append(((t, t + duration), p))
+        subtitles.append(((t, t + duration), _strip_trailing_punct_cn(p)))
         t += duration
     return subtitles
 
@@ -139,15 +147,15 @@ def _split_subtitle_by_sentences_en(line: str, start: float, end: float) -> List
     parts = re.split(r'(?<=[.!?,;:])\s+', line)
     parts = [p for p in parts if p.strip()]
     if not parts:
-        return [((start, end), line)]
+        return [((start, end), _strip_trailing_punct_en(line))]
     total_words = sum(len(p.split()) for p in parts)
     if total_words == 0:
-        return [((start, end), line)]
+        return [((start, end), _strip_trailing_punct_en(line))]
     subtitles = []
     t = start
     for p in parts:
         duration = (end - start) * len(p.split()) / total_words
-        subtitles.append(((t, t + duration), p))
+        subtitles.append(((t, t + duration), _strip_trailing_punct_en(p)))
         t += duration
     return subtitles
 

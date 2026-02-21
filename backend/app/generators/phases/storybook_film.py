@@ -41,47 +41,45 @@ _current_dir = os.path.dirname(os.path.abspath(__file__))
 _font = os.path.join(_current_dir, "../../../media/DouyinSansBold.otf")
 
 
+def _strip_trailing_punct_cn(text: str) -> str:
+    return text.rstrip('。！？，、；：')
+
+
+def _strip_trailing_punct_en(text: str) -> str:
+    return text.rstrip('.!?,;:')
+
+
 def _split_subtitle_by_sentences_cn(line: str, start: float, end: float) -> List[tuple]:
-    """
-    Split a Chinese subtitle into individual sentences (split on sentence-ending punctuation).
-    Each sentence gets a time slot proportional to its character count.
-    Multiple sentences per panel are supported; each appears as a separate subtitle entry.
-    """
-    # Split on all common Chinese punctuation marks, keeping the trailing punctuation
     parts = re.split(r'(?<=[。！？，、；：])', line)
     parts = [p for p in parts if p.strip()]
     if not parts:
-        return [((start, end), line)]
+        return [((start, end), _strip_trailing_punct_cn(line))]
 
     total_len = sum(len(p) for p in parts)
     subtitles = []
     t = start
     for p in parts:
         duration = (end - start) * len(p) / total_len
-        subtitles.append(((t, t + duration), p))
+        subtitles.append(((t, t + duration), _strip_trailing_punct_cn(p)))
         t += duration
     return subtitles
 
 
 def _split_subtitle_by_sentences_en(line: str, start: float, end: float) -> List[tuple]:
-    """
-    Split an English subtitle into individual sentences.
-    Each sentence gets a time slot proportional to its word count.
-    """
     parts = re.split(r'(?<=[.!?,;:])\s+', line)
     parts = [p for p in parts if p.strip()]
     if not parts:
-        return [((start, end), line)]
+        return [((start, end), _strip_trailing_punct_en(line))]
 
     total_words = sum(len(p.split()) for p in parts)
     if total_words == 0:
-        return [((start, end), line)]
+        return [((start, end), _strip_trailing_punct_en(line))]
 
     subtitles = []
     t = start
     for p in parts:
         duration = (end - start) * len(p.split()) / total_words
-        subtitles.append(((t, t + duration), p))
+        subtitles.append(((t, t + duration), _strip_trailing_punct_en(p)))
         t += duration
     return subtitles
 
