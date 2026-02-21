@@ -14,13 +14,14 @@ from typing import AsyncIterable
 from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import Phase
 from app.generators.phases.common import get_correction_completion_chunk
 from app.mode import Mode
 from app.generators.prompts.insurance_case import SCRIPT_SYSTEM_PROMPT as INSURANCE_SCRIPT_PROMPT
 from app.generators.prompts.story_narration import SCRIPT_SYSTEM_PROMPT as STORY_NARRATION_SCRIPT_PROMPT
+from app.generators.prompts.text_to_storyboard import SCRIPT_SYSTEM_PROMPT as TEXT_TO_STORYBOARD_SCRIPT_PROMPT
 
 SCRIPT_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -91,6 +92,8 @@ class ScriptGenerator(Generator):
             self.system_prompt = INSURANCE_SCRIPT_PROMPT
         elif content_mode == MODE_STORY_NARRATION:
             self.system_prompt = STORY_NARRATION_SCRIPT_PROMPT
+        elif content_mode == MODE_TEXT_TO_STORYBOARD:
+            self.system_prompt = TEXT_TO_STORYBOARD_SCRIPT_PROMPT
         else:
             self.system_prompt = SCRIPT_SYSTEM_PROMPT
 

@@ -11,7 +11,7 @@
 
 from arkitect.core.component.llm import ArkChatRequest
 
-from app.constants import MODE_STORY_NARRATION
+from app.constants import MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import Phase
 from app.generators.phases.audio import AudioGenerator
@@ -61,6 +61,12 @@ story_narration_generator_map = {
     Phase.FILM: StorybookFilmGenerator,
 }
 
+# text_to_storyboard mode: same pipeline as story_narration —
+# no video generation, audio is continuous, slides through first_frame_images
+text_to_storyboard_generator_map = {
+    **story_narration_generator_map,
+}
+
 
 class GeneratorFactory:
     phase: Phase
@@ -75,6 +81,8 @@ class GeneratorFactory:
 
         if content_mode == MODE_STORY_NARRATION:
             g_class = story_narration_generator_map.get(self.phase)
+        elif content_mode == MODE_TEXT_TO_STORYBOARD:
+            g_class = text_to_storyboard_generator_map.get(self.phase)
         else:
             g_class = generator_map.get(self.phase)
 

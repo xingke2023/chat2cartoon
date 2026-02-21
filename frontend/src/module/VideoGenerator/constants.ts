@@ -14,6 +14,7 @@ import { ErrorString, PhaseMapType, UserConfirmationDataKey, VideoGeneratorTaskP
 export const MODE_CHILDREN_STORY = 'children_story';
 export const MODE_INSURANCE_CASE = 'insurance_case';
 export const MODE_STORY_NARRATION = 'story_narration';
+export const MODE_TEXT_TO_STORYBOARD = 'text_to_storyboard';
 
 export const MODE_CONFIG = {
   [MODE_CHILDREN_STORY]: {
@@ -36,6 +37,13 @@ export const MODE_CONFIG = {
     description: '将港险案例制作成配音分镜故事视频',
     openingRemark: '你好！请告诉我一个港险案例场景，我来制作一段配音分镜故事视频~',
     openingQuestions: ['丈夫突然离世，危疾保险让妻子重建生活', '一场车祸改变命运，意外险赔付化解危机', '重疾确诊本是绝望，保单理赔助全家走出困境'],
+  },
+  [MODE_TEXT_TO_STORYBOARD]: {
+    name: '原文分镜',
+    assistantName: '原文分镜视频生成器',
+    description: '将您的原始文案按段落分镜，生成配音动画视频',
+    openingRemark: '你好！请直接粘贴您的文案原文，我来将它合理分段，每段生成一个分镜画面，并制作成配音动画视频~',
+    openingQuestions: ['（在此粘贴您的文案原文，系统将自动分段生成分镜）'],
   },
 };
 import {

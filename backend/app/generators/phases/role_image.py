@@ -21,7 +21,7 @@ from volcenginesdkarkruntime.types.chat.chat_completion_chunk import ChoiceDelta
     ChoiceDeltaToolCallFunction
 
 from app.clients.t2i import T2IClient, T2IException
-from app.constants import MAX_STORY_BOARD_NUMBER, API_KEY, T2V_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION
+from app.constants import MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, T2V_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -85,9 +85,18 @@ class RoleImageGenerator(Generator):
         elif content_mode == MODE_STORY_NARRATION:
             self.image_style_suffix = "卡通插画风格，色彩鲜明，画面感强。"
             self.image_size = None  # use default size
+        elif content_mode == MODE_TEXT_TO_STORYBOARD:
+            self.image_style_suffix = "卡通插画风格，色彩鲜明，画面感强。"
+            self.image_size = None
         else:
             self.image_style_suffix = "卡通风格插图，3D渲染。"
             self.image_size = None
+        self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
+
+    @staticmethod
+    def _is_no_role(role_descriptions) -> bool:
+        """Return True when the only entry is the virtual '无角色' placeholder."""
+        return len(role_descriptions) == 1 and role_descriptions[0].description.startswith("无角色")
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         role_description_completion = self.phase_finder.get_role_descriptions()
@@ -97,9 +106,21 @@ class RoleImageGenerator(Generator):
             ERROR("role descriptions not found")
             raise InvalidParameter("messages", "role descriptions not found")
 
-        if len(role_descriptions) > MAX_STORY_BOARD_NUMBER:
+        if len(role_descriptions) > self.max_storyboard_num:
             ERROR("role description count exceed limit")
             raise InvalidParameter("messages", "role description count exceed limit")
+
+        # No-role mode: skip image generation entirely, emit empty role_images
+        if self._is_no_role(role_descriptions):
+            INFO("no-role mode: skipping role image generation")
+            yield ArkChatCompletionChunk(
+                id=get_reqid(),
+                choices=[Choice(index=0, delta=ChoiceDelta(content=f"phase={Phase.ROLE_IMAGE.value}\n\n"))],
+                created=int(time.time()), model=get_resource_id(), object="chat.completion.chunk"
+            )
+            yield _get_tool_resp(0, json.dumps({"role_images": []}))
+            yield _get_tool_resp(1)
+            return
 
         # handle case when some assets are already provided, only partial set of assets needs to be generated
         generated_role_images: List[RoleImage] = []

@@ -26,7 +26,7 @@ from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, Cho
 
 from app.clients.downloader import DownloaderClient
 from app.clients.tos import TOSClient
-from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, API_KEY, SUBTITLE_CN_FONT_SIZE, SUBTITLE_EN_FONT_SIZE, SUBTITLE_ENABLE_TRANSLATION
+from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, SUBTITLE_CN_FONT_SIZE, SUBTITLE_EN_FONT_SIZE, SUBTITLE_ENABLE_TRANSLATION, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 import re
@@ -385,6 +385,8 @@ class StorybookFilmGenerator(Generator):
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        content_mode = request.metadata.get("mode", "") if request.metadata else ""
+        self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         tones = self.phase_finder.get_tones()
@@ -409,7 +411,7 @@ class StorybookFilmGenerator(Generator):
             )
             raise InvalidParameter("messages", "number of tones, first_frame_images and audios do not match")
 
-        if len(tones) > MAX_STORY_BOARD_NUMBER:
+        if len(tones) > self.max_storyboard_num:
             ERROR(f"tones count: {len(tones)} exceed limit")
             raise InvalidParameter("messages", "tones count exceed limit")
 

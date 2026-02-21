@@ -26,7 +26,7 @@ from volcenginesdkarkruntime import Ark
 from app.clients.ark_console import ArkConsoleClient, CreateVideoGenTaskRequest, TosLocation, TosConfig
 from app.clients.downloader import DownloaderClient
 from app.clients.tos import TOSClient
-from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, API_KEY, CGT_ENDPOINT_ID
+from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, CGT_ENDPOINT_ID, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.logger import ERROR, INFO
@@ -104,6 +104,8 @@ class VideoGenerator(Generator):
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        content_mode = request.metadata.get("mode", "") if request.metadata else ""
+        self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         first_frame_images = self.phase_finder.get_first_frame_images()
@@ -122,7 +124,7 @@ class VideoGenerator(Generator):
                 f"first frame images or video description counts are incorrect, len(first_frame_images)={len(first_frame_images)}, len(video_descriptions)={len(video_descriptions)}")
             raise InvalidParameter("messages", "first frame images or video description counts are incorrect")
 
-        if len(first_frame_images) > MAX_STORY_BOARD_NUMBER:
+        if len(first_frame_images) > self.max_storyboard_num:
             ERROR("first frame image count exceed limit")
             raise InvalidParameter("messages", "first frame image count exceed limit")
 

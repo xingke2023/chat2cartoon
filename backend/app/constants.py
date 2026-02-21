@@ -40,14 +40,16 @@ TTS_INT_SIZE = 4
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
 IMAGE_SIZE_LIMIT = 10 * 1024 * 1024  # 10MB
 MAX_STORY_BOARD_NUMBER = 15
+MAX_STORY_BOARD_NUMBER_EXTENDED = 30  # Used by text_to_storyboard mode
 
 MODE_CHILDREN_STORY = "children_story"
 MODE_INSURANCE_CASE = "insurance_case"
 MODE_STORY_NARRATION = "story_narration"
+MODE_TEXT_TO_STORYBOARD = "text_to_storyboard"
 
 SUBTITLE_CN_FONT_SIZE = int(os.getenv("SUBTITLE_CN_FONT_SIZE", "40"))
 SUBTITLE_EN_FONT_SIZE = int(os.getenv("SUBTITLE_EN_FONT_SIZE", "28"))
-SUBTITLE_ENABLE_TRANSLATION = os.getenv("SUBTITLE_ENABLE_TRANSLATION", "true").lower() == "true"
+SUBTITLE_ENABLE_TRANSLATION = os.getenv("SUBTITLE_ENABLE_TRANSLATION", "false").lower() == "true"
 
 DEFAULT_AUDIO_TONE = "zh_female_shuangkuaisisi_moon_bigtts"
 VALID_TONES = [

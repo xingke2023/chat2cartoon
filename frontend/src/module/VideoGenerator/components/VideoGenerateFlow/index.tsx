@@ -52,6 +52,7 @@ import {
 import FlowItemTitle from '../FlowItemTitle';
 import LoadingFilm from '../LoadingFilm';
 import useFlowPhaseData from './useFlowPhaseData';
+import { MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD } from '../../constants';
 
 interface Props {
   messages: ComplexMessage;
@@ -69,6 +70,8 @@ const VideoGenerateFlow = (props: Props) => {
   const { messages } = props;
   const { assistantInfo } = useContext(ChatWindowContext);
   const assistantData = assistantInfo as Assistant & { Extra?: any };
+  const contentMode = assistantData?.Extra?.Mode ?? '';
+  const isVideoSkipped = contentMode === MODE_STORY_NARRATION || contentMode === MODE_TEXT_TO_STORYBOARD;
 
   // 是否需要提示重新生成
   const [firstFrameDescriptionRegenerateState, setFirstFrameDescriptionRegenerateState] = useState<number>(0);
@@ -393,11 +396,16 @@ const VideoGenerateFlow = (props: Props) => {
         generateStoryBoardImageData.length > 0
           ? active => {
               const firstFrameImages = userConfirmData?.[UserConfirmationDataKey.FirstFrameImages];
+              // Parse confirmed descriptions so the edit modal shows the same text as the storyboard script
+              const confirmedDescriptions = matchFirstFrameDescription(
+                userConfirmData?.[UserConfirmationDataKey.FirstFrameDescriptions] ?? '',
+              );
               return (
                 <CardScrollList
                   id={FlowPhase.GenerateStoryBoardImage}
                   list={generateStoryBoardImageData.map((item, index) => {
                     const firstFrameImageIndex = firstFrameImages?.findIndex(item => item.index === index);
+                    const confirmedDesc = confirmedDescriptions?.[index]?.content ?? item.description;
 
                     return (
                       <MediaCard
@@ -407,7 +415,7 @@ const VideoGenerateFlow = (props: Props) => {
                             firstFrameImages?.[firstFrameImageIndex]?.images?.[0]) ||
                           ''
                         }
-                        prompt={item.description}
+                        prompt={confirmedDesc}
                         disabled={modelOperateDisabled}
                         header={
                           <MediaCardHeader
@@ -524,7 +532,14 @@ const VideoGenerateFlow = (props: Props) => {
       id: FlowPhase.GenerateStoryBoardVideo,
       title: (
         <FlowItemTitle
-          content={'3.生成分镜视频'}
+          content={
+            <span>
+              {'3.生成分镜视频'}
+              {isVideoSkipped && (
+                <span style={{ marginLeft: 6, fontSize: 12, color: '#999', fontWeight: 400 }}>（跳过）</span>
+              )}
+            </span>
+          }
           disabled={finishPhase === VideoGeneratorTaskPhase.PhaseFilm || modelOperateDisabled}
           onRetry={retryFromPhase}
           retryPhase={VideoGeneratorTaskPhase.PhaseVideoDescription}

@@ -28,13 +28,14 @@ from app.clients.tts import TTSClient, TextRequest
 from app.clients.tts import TTS_DEFAULT_SPEAKER
 from app.clients.vlm import VLMClient
 from app.constants import VLM_ENDPOINT_ID, FILM_INTERACTION_TIMEOUT_TIME_IN_SECONDS, IMAGE_SIZE_LIMIT, TTS_APP_KEY, \
-    TTS_ACCESS_KEY, MODE_INSURANCE_CASE
+    TTS_ACCESS_KEY, MODE_INSURANCE_CASE, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.logger import INFO, ERROR
 from app.message_utils import extract_dict_from_message
 from app.mode import Mode
 from app.generators.prompts.insurance_case import FILM_INTERACTION_SYSTEM_PROMPT as INSURANCE_FILM_INTERACTION_PROMPT
+from app.generators.prompts.text_to_storyboard import FILM_INTERACTION_SYSTEM_PROMPT as TEXT_TO_STORYBOARD_FILM_INTERACTION_PROMPT
 
 FILM_INTERACTION_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -90,7 +91,12 @@ class FilmInteractionGenerator(Generator):
         self.phase_finder = PhaseFinder(request)
         self.mode = mode
         content_mode = request.metadata.get("mode", "") if request.metadata else ""
-        self.system_prompt = INSURANCE_FILM_INTERACTION_PROMPT if content_mode == MODE_INSURANCE_CASE else FILM_INTERACTION_SYSTEM_PROMPT
+        if content_mode == MODE_INSURANCE_CASE:
+            self.system_prompt = INSURANCE_FILM_INTERACTION_PROMPT
+        elif content_mode == MODE_TEXT_TO_STORYBOARD:
+            self.system_prompt = TEXT_TO_STORYBOARD_FILM_INTERACTION_PROMPT
+        else:
+            self.system_prompt = FILM_INTERACTION_SYSTEM_PROMPT
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         for message in self.request.messages:

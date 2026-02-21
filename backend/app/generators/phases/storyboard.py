@@ -14,13 +14,14 @@ from typing import AsyncIterable
 from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MAX_STORY_BOARD_NUMBER, MODE_INSURANCE_CASE, MODE_STORY_NARRATION
+from app.constants import LLM_ENDPOINT_ID, MAX_STORY_BOARD_NUMBER, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
 from app.mode import Mode
 from app.generators.prompts.insurance_case import STORY_BOARD_SYSTEM_PROMPT as INSURANCE_STORY_BOARD_PROMPT
 from app.generators.prompts.story_narration import STORY_BOARD_SYSTEM_PROMPT as STORY_NARRATION_STORY_BOARD_PROMPT
+from app.generators.prompts.text_to_storyboard import STORY_BOARD_SYSTEM_PROMPT as TEXT_TO_STORYBOARD_STORY_BOARD_PROMPT
 
 STORY_BOARD_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -104,6 +105,8 @@ class StoryBoardGenerator(Generator):
             self.system_prompt = INSURANCE_STORY_BOARD_PROMPT
         elif content_mode == MODE_STORY_NARRATION:
             self.system_prompt = STORY_NARRATION_STORY_BOARD_PROMPT
+        elif content_mode == MODE_TEXT_TO_STORYBOARD:
+            self.system_prompt = TEXT_TO_STORYBOARD_STORY_BOARD_PROMPT
         else:
             self.system_prompt = STORY_BOARD_SYSTEM_PROMPT
 

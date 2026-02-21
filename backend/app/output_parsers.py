@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import re
+from itertools import zip_longest
 from typing import List
 
 from app.models.first_frame_description import FirstFrameDescription
@@ -26,7 +27,10 @@ def parse_storyboards(completions: str) -> List[StoryBoard]:
     lines_en = re.findall(r"英文台词[：:](.*)", completions)
 
     story_boards = []
-    for c, s, l, le in zip(characters, scenes, lines, lines_en):
+    # Use zip_longest so a missing field in the last entry doesn't silently drop the whole entry
+    for c, s, l, le in zip_longest(characters, scenes, lines, lines_en, fillvalue=""):
+        if not c:
+            break
         story_boards.append(
             StoryBoard(
                 characters=c.split("，") if "，" in c else [c],
@@ -47,20 +51,29 @@ def parse_role_description(completions: str) -> List[RoleDescription]:
 def parse_first_frame_description(completions: str) -> List[FirstFrameDescription]:
     descriptions = re.findall(r"首帧描述[：:](.*)", completions)
     characters = re.findall(r"角色[：:](.*)", completions)
-    first_frame_descriptions = [FirstFrameDescription(
-        description=d,
-        characters=c.split("，") if "，" in c else [c],
-    ) for d, c in zip(descriptions, characters)]
+    first_frame_descriptions = []
+    for d, c in zip_longest(descriptions, characters, fillvalue=""):
+        if not d:
+            break
+        first_frame_descriptions.append(FirstFrameDescription(
+            description=d,
+            characters=c.split("，") if "，" in c else [c],
+        ))
     return first_frame_descriptions
 
 
 def parse_video_description(completions: str) -> List[VideoDescription]:
-    descriptions = re.findall(r"描述[：:](.*)", completions)
+    # Use a precise pattern to avoid matching '首帧描述：' or '角色描述：'
+    descriptions = re.findall(r"^描述[：:](.*)", completions, re.MULTILINE)
     characters = re.findall(r"角色[：:](.*)", completions)
-    video_descriptions = [VideoDescription(
-        description=d,
-        characters=c.split("，") if "，" in c else [c],
-    ) for d, c in zip(descriptions, characters)]
+    video_descriptions = []
+    for d, c in zip_longest(descriptions, characters, fillvalue=""):
+        if not d:
+            break
+        video_descriptions.append(VideoDescription(
+            description=d,
+            characters=c.split("，") if "，" in c else [c],
+        ))
     return video_descriptions
 
 
@@ -70,7 +83,9 @@ def parse_tone(completions: str) -> List[Tone]:
     tones_text = re.findall(r"音色[：:](.*)", completions)
 
     tones = []
-    for i, (l, le, t) in enumerate(zip(lines, lines_en, tones_text)):
+    for i, (l, le, t) in enumerate(zip_longest(lines, lines_en, tones_text, fillvalue="")):
+        if not t:
+            break
         tones.append(
             Tone(
                 index=i,

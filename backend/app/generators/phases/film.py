@@ -30,7 +30,7 @@ from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, Cho
 
 from app.clients.downloader import DownloaderClient
 from app.clients.tos import TOSClient
-from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, API_KEY
+from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, MODE_TEXT_TO_STORYBOARD, SUBTITLE_ENABLE_TRANSLATION
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -153,7 +153,7 @@ def _generate_film(req_id: str, tones: List[Tone], videos: List[Video], audios: 
         # slice subtitles if the line cannot fit to one row
         if t.line:
             cn_subtitles.extend(_split_subtitle(t.line, clip_start_time, clip_end_time, _split_subtitle_cn))
-        if t.line_en:
+        if SUBTITLE_ENABLE_TRANSLATION and t.line_en:
             en_subtitles.extend(_split_subtitle(t.line_en, clip_start_time, clip_end_time, _split_subtitle_en))
 
         # add cross-fade in or out to every clip
@@ -231,6 +231,8 @@ class FilmGenerator(Generator):
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        content_mode = request.metadata.get("mode", "") if request.metadata else ""
+        self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         tones = self.phase_finder.get_tones()
@@ -254,7 +256,7 @@ class FilmGenerator(Generator):
                 f"number of tones: {len(tones)}, num of videos: {len(videos)} and num of audios: {len(audios)} do not match")
             raise InvalidParameter("messages", "number of tones videos and audios do not match")
 
-        if len(tones) > MAX_STORY_BOARD_NUMBER:
+        if len(tones) > self.max_storyboard_num:
             ERROR(f"tones count: {len(tones)} exceed limit")
             raise InvalidParameter("messages", "tones count exceed limit")
 

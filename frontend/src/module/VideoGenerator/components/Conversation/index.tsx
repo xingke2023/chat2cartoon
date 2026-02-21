@@ -81,7 +81,6 @@ const Conversation = () => {
   return (
     <div className={styles.conversationWrapper}>
       <div className={styles.displayBar}>
-        <FlowMiniMap ref={miniMapRef} />
       </div>
       <div className={styles.conversationContainer}>
         <div

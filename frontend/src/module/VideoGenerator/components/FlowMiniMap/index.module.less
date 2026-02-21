@@ -1,38 +1,54 @@
-.icon {
-  :global(.arco-steps-item-icon) {
-    line-height: 22px;
-    vertical-align: text-top;
-    :global(.arco-steps-icon) {
-      width: 16px;
-      height: 16px;
-      border:none;
-      border-radius: 46px;
-      background: var(--ai-primary-color-primary-6, linear-gradient(78deg, #3B91FF -3.23%, #0D5EFF 51.11%, #C069FF 98.65%));
-      color: var(---T0-FFFFFF-, #FFF);
-      text-align: center;
-      font-family: Roboto;
-      font-size: 12px;
-      font-style: normal;
-      font-weight: 500;
-      line-height: 16px;
-    }
-  }
-  :global(.arco-steps-item-content){
-    :global(.arco-steps-item-title){
-      color: var(--text-color-text-1, var(--text-color-text-1, #0C0D0E));
-      text-align: center;
+.stepsBar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.05);
+  padding: 0 24px;
+  white-space: nowrap;
+}
 
-      font-family: "PingFang SC";
-      font-size: 13px;
-      font-style: normal;
-      font-weight: 400;
-      line-height: 22px !important;
-      letter-spacing: 0.039px;
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-      @media (max-width: 480px) {
-        font-size: 11px;
-        line-height: 18px !important;
-      }
-    }
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(78deg, #3b91ff -3.23%, #0d5eff 51.11%, #c069ff 98.65%);
+  color: #fff;
+  font-family: Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.stepLabel {
+  color: #0c0d0e;
+  font-family: 'PingFang SC', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: 0.039px;
+
+  @media (max-width: 480px) {
+    font-size: 11px;
   }
+}
+
+.stepDivider {
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: #e5e6eb;
+  margin: 0 8px;
+  flex-shrink: 0;
 }

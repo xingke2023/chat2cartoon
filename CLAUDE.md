@@ -60,6 +60,14 @@ Phases run in order; each generator reads prior phase outputs from conversation 
 - **User messages** for phase advancement: plain text (CONFIRMATION mode) or prefixed with `REGENERATION` + JSON payload (REGENERATION mode).
 - REGENERATION messages carry a JSON blob with existing assets so only missing ones are re-generated.
 
+### UI 细节
+
+#### UserMessage 步骤标题
+- 步骤标签文字：`frontend/src/module/VideoGenerator/components/UserMessage/index.tsx` 第 16 行的 `STEP_LABELS` 数组
+- 圆形数字图标样式：`frontend/src/module/VideoGenerator/components/UserMessage/index.module.less` 的 `.stepIndex` 类
+  - `width` / `height`：圆圈尺寸（当前 32px）
+  - `font-size`：圆圈内数字大小（当前 18px）
+
 ### Frontend Structure
 - `src/routes/page.tsx` — Homepage with mode selection cards; renders `VideoGenerator` with the chosen mode's config.
 - `src/module/VideoGenerator/` — Main module; `store/RenderedMessages/provider.tsx` drives the phase-by-phase UI flow by calling `sendMessageImplicitly` / `startReply`.

@@ -23,7 +23,7 @@ from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, Cho
 
 from app.clients.tos import TOSClient
 from app.clients.tts import tts
-from app.constants import ARTIFACT_TOS_BUCKET, VALID_TONES, DEFAULT_AUDIO_TONE, MAX_STORY_BOARD_NUMBER
+from app.constants import ARTIFACT_TOS_BUCKET, VALID_TONES, DEFAULT_AUDIO_TONE, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, MODE_TEXT_TO_STORYBOARD
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -72,6 +72,8 @@ class AudioGenerator(Generator):
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        content_mode = request.metadata.get("mode", "") if request.metadata else ""
+        self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         tones = self.phase_finder.get_tones()
@@ -80,7 +82,7 @@ class AudioGenerator(Generator):
             ERROR("tones not found")
             raise InvalidParameter("messages", "tones not found")
 
-        if len(tones) > MAX_STORY_BOARD_NUMBER:
+        if len(tones) > self.max_storyboard_num:
             ERROR("line count exceed limit")
             raise InvalidParameter("messages", "line count exceed limit")
 

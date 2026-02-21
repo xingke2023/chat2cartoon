@@ -23,11 +23,14 @@ interface Props {
 const ChatArea = (props: Props) => {
   const { messages } = props;
 
+  let userMessageCount = 0;
+
   return (
     <div className={styles.wrapper}>
       {messages.map((message, index) => {
         if (message.role === 'user') {
-          return <UserMessage id={message.id} key={message.id} content={message.content} />;
+          const stepIndex = userMessageCount++;
+          return <UserMessage id={message.id} key={message.id} content={message.content} stepIndex={stepIndex} />;
         }
 
         // 简单消息，只有纯文本
