@@ -1,7 +1,7 @@
 # Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 # Licensed under the 【火山方舟】原型应用软件自用许可协议
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at 
+# You may obtain a copy of the License at
 #     https://www.volcengine.com/docs/82379/1433703
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,25 +12,24 @@
 import asyncio
 import json
 import os
+import re
+import subprocess
 import tempfile
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterable, Optional, List, Tuple
-from urllib.parse import urlparse
 
 from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
 from arkitect.core.errors import InvalidParameter, InternalServiceError
 from arkitect.utils.context import get_reqid, get_resource_id
-from moviepy import TextClip, CompositeVideoClip, VideoFileClip, AudioFileClip
-from moviepy.video.fx import CrossFadeIn, CrossFadeOut
-from moviepy.video.tools.subtitles import SubtitlesClip
 from volcenginesdkarkruntime import Ark
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta, ChoiceDeltaToolCall, \
     ChoiceDeltaToolCallFunction
 
 from app.clients.downloader import DownloaderClient
 from app.clients.tos import TOSClient
-from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, MODE_TEXT_TO_STORYBOARD, SUBTITLE_ENABLE_TRANSLATION
+from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, \
+    MODE_TEXT_TO_STORYBOARD, SUBTITLE_CN_FONT_SIZE, SUBTITLE_EN_FONT_SIZE, SUBTITLE_ENABLE_TRANSLATION
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -42,9 +41,6 @@ from app.models.video import Video
 
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 _font = os.path.join(_current_dir, "../../../media/DouyinSansBold.otf")
-
-_FADE_IN_DURATION_IN_SECONDS = 0.5
-_FADE_OUT_DURATION_IN_SECONDS = 0.5
 
 
 def _get_tool_resp(index: int, content: Optional[str] = None) -> ArkChatCompletionChunk:
@@ -75,144 +71,298 @@ def _get_tool_resp(index: int, content: Optional[str] = None) -> ArkChatCompleti
     )
 
 
-def _split_subtitle_en(input_string: str, max_length: int = 40):
-    words = input_string.split()
-    result = []
-    current_part = []
-
-    for word in words:
-        if len(' '.join(current_part + [word])) <= max_length:
-            current_part.append(word)
-        else:
-            result.append(' '.join(current_part))
-            current_part = [word]
-
-    if current_part:
-        result.append(' '.join(current_part))
-
-    return result
+def _seconds_to_ass_time(seconds: float) -> str:
+    """Convert float seconds to ASS timestamp format: H:MM:SS.cc"""
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    cs = int(round((seconds - int(seconds)) * 100))
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 
-def _split_subtitle_cn(input_string: str, max_length: int = 40):
-    result = []
-    current_part = []
-
-    for char in input_string:
-        current_part.append(char)
-        if len(current_part) == max_length:
-            result.append(''.join(current_part))
-            current_part = []
-
-    if current_part:
-        result.append(''.join(current_part))
-
-    return result
+def _wrap_text(text: str, max_chars_per_line: int) -> str:
+    """Insert ASS line breaks (\\N) so each line stays within max_chars_per_line."""
+    if len(text) <= max_chars_per_line:
+        return text
+    lines = []
+    while len(text) > max_chars_per_line:
+        lines.append(text[:max_chars_per_line])
+        text = text[max_chars_per_line:]
+    if text:
+        lines.append(text)
+    return "\\N".join(lines)
 
 
-def _split_subtitle(line: str, start_time: int, end_time: int, split_fn) -> List:
-    total_length = len(line)
-    lines = split_fn(line, 40)
-    total_duration = end_time - start_time
-    start = start_time
+def _build_ass_content(subtitles: List, style_name: str, font_name: str, font_size: int,
+                        margin_v: int, video_width: int, video_height: int,
+                        max_chars_per_line: int = 14) -> str:
+    """Build ASS subtitle file content for one subtitle track."""
+    header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {video_width}
+PlayResY: {video_height}
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, Bold, Italic, Alignment, MarginL, MarginR, MarginV, Outline, Shadow
+Style: {style_name},{font_name},{font_size},&H00FFFFFF,&H00021526,-1,0,2,10,10,{margin_v},2,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    lines = []
+    for (start, end), text in subtitles:
+        escaped = text.replace(",", "，")
+        wrapped = _wrap_text(escaped, max_chars_per_line)
+        lines.append(
+            f"Dialogue: 0,{_seconds_to_ass_time(start)},{_seconds_to_ass_time(end)},{style_name},,0,0,0,,{wrapped}"
+        )
+    return header + "\n".join(lines) + "\n"
+
+
+def _split_subtitle_by_sentences_cn(line: str, start: float, end: float) -> List[tuple]:
+    parts = re.split(r'(?<=[。！？，、；：])', line)
+    parts = [p for p in parts if p.strip()]
+    if not parts:
+        return [((start, end), line)]
+    total_len = sum(len(p) for p in parts)
     subtitles = []
-    for l in lines:
-        end = start + total_duration * len(l) / total_length
-        subtitles.append(((start, end), l))
-        start = end
+    t = start
+    for p in parts:
+        duration = (end - start) * len(p) / total_len
+        subtitles.append(((t, t + duration), p))
+        t += duration
     return subtitles
 
 
+def _split_subtitle_by_sentences_en(line: str, start: float, end: float) -> List[tuple]:
+    parts = re.split(r'(?<=[.!?,;:])\s+', line)
+    parts = [p for p in parts if p.strip()]
+    if not parts:
+        return [((start, end), line)]
+    total_words = sum(len(p.split()) for p in parts)
+    if total_words == 0:
+        return [((start, end), line)]
+    subtitles = []
+    t = start
+    for p in parts:
+        duration = (end - start) * len(p.split()) / total_words
+        subtitles.append(((t, t + duration), p))
+        t += duration
+    return subtitles
+
+
+def _get_video_duration(video_path: str) -> float:
+    """Get video duration in seconds via ffprobe."""
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path,
+        ],
+        capture_output=True, text=True, check=True,
+    )
+    return float(probe.stdout.strip())
+
+
+def _get_video_size(video_path: str) -> Tuple[int, int]:
+    """Get video width and height via ffprobe."""
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=s=x:p=0",
+            video_path,
+        ],
+        capture_output=True, text=True, check=True,
+    )
+    parts = probe.stdout.strip().split("x")
+    return int(parts[0]), int(parts[1])
+
+
+def _prepare_panel(args):
+    """
+    Normalize a single video clip: re-encode with audio trimmed/replaced by the TTS audio.
+    Returns (index, panel_video_path, duration).
+    """
+    index, video_path, audio_path, output_path = args
+
+    video_duration = _get_video_duration(video_path)
+    audio_duration = _get_video_duration(audio_path)
+
+    # Use the video duration; trim audio if longer, pad silence if shorter
+    duration = video_duration
+
+    if audio_duration >= video_duration:
+        # Trim audio to video length
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", video_path,
+                "-i", audio_path,
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                "-t", str(duration),
+                "-c:v", "copy",
+                "-c:a", "aac",
+                output_path,
+            ],
+            capture_output=True, check=True,
+        )
+    else:
+        # Pad audio with silence to reach video duration
+        pad_duration = video_duration - audio_duration
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", video_path,
+                "-i", audio_path,
+                "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=stereo:d={pad_duration}",
+                "-filter_complex", "[1:a][2:a]concat=n=2:v=0:a=1[aout]",
+                "-map", "0:v:0",
+                "-map", "[aout]",
+                "-t", str(duration),
+                "-c:v", "copy",
+                "-c:a", "aac",
+                output_path,
+            ],
+            capture_output=True, check=True,
+        )
+
+    return index, output_path, duration
+
+
 def _generate_film(req_id: str, tones: List[Tone], videos: List[Video], audios: List[Audio]):
-    videos.sort(key=lambda video: video.index)
-    audios.sort(key=lambda audio: audio.index)
-
-    video_clips = []
-    cn_subtitles = []
-    en_subtitles = []
-
-    clip_start_time = 0.0
-    start = []
-    elements = list(zip(tones, videos, audios))
-    for i, (t, v, a) in enumerate(elements):
-        start.append(clip_start_time)
-
-        with tempfile.NamedTemporaryFile(suffix=".mp4") as video_temp:
-            video_temp.write(v.video_data)
-            video_clip = VideoFileClip(video_temp.name)
-
-        with tempfile.NamedTemporaryFile(suffix=".mp3") as audio_temp:
-            audio_temp.write(a.audio_data)
-            audio_clip = AudioFileClip(audio_temp.name)
-            if audio_clip.duration > video_clip.duration:
-                audio_clip = audio_clip.subclipped(0, video_clip.duration)
-
-        video_clip = video_clip.with_audio(audio_clip)
-
-        # Add subtitles
-        clip_end_time = clip_start_time + video_clip.duration
-        # slice subtitles if the line cannot fit to one row
-        if t.line:
-            cn_subtitles.extend(_split_subtitle(t.line, clip_start_time, clip_end_time, _split_subtitle_cn))
-        if SUBTITLE_ENABLE_TRANSLATION and t.line_en:
-            en_subtitles.extend(_split_subtitle(t.line_en, clip_start_time, clip_end_time, _split_subtitle_en))
-
-        # add cross-fade in or out to every clip
-        if i != 0:
-            video_clip = CrossFadeIn(duration=_FADE_IN_DURATION_IN_SECONDS).apply(video_clip)
-        if i != len(elements) - 1:
-            video_clip = CrossFadeOut(duration=_FADE_OUT_DURATION_IN_SECONDS).apply(video_clip)
-            # to overlap 2 clips, end time must deduct with the fade out duration
-            clip_end_time = clip_end_time - _FADE_OUT_DURATION_IN_SECONDS
-        video_clips.append(video_clip)
-        clip_start_time = clip_end_time
-
-    # Concatenate all clips
-    clips = []
-    for index, (video_clip, start_time) in enumerate(zip(video_clips, start)):
-        video_clip = video_clip.with_start(start_time).with_position("center")
-        clips.append(video_clip)
-
-    cn_generator = lambda text: TextClip(font=_font, text=text, font_size=24, color="white", stroke_color="#021526",
-                                         horizontal_align="center", vertical_align="bottom", size=clips[0].size,
-                                         margin=(None, -60, None, None))
-    cn_subtitle_clip = SubtitlesClip(cn_subtitles, make_textclip=cn_generator)
-
-    en_generator = lambda text: TextClip(font=_font, text=text, font_size=24, color="white", stroke_color="#021526",
-                                         horizontal_align="center", vertical_align="bottom", size=clips[0].size,
-                                         margin=(None, -30, None, None))
-    en_subtitle_clip = SubtitlesClip(en_subtitles, make_textclip=en_generator)
-    final_video = CompositeVideoClip(clips + [cn_subtitle_clip, en_subtitle_clip])
-
-    # # Add background music
-    # background_music_path = os.path.join(_current_dir, "../../../lib/background_music.mp3")
-    # background_music = AudioFileClip(background_music_path)
-    # background_music = background_music.subclipped(0, final_video.duration)
-    # background_music = background_music.with_effects([MultiplyVolume(0.5)])
-    # final_audio = CompositeAudioClip([final_video.audio, background_music])
-    # final_video = final_video.with_audio(final_audio)
+    """
+    Compose final MP4 using ffmpeg:
+    - Each clip = one video with its TTS audio.
+    - Clips are concatenated (re-encode for consistent stream).
+    - Bilingual ASS subtitles burned in.
+    - Uploaded to TOS, returns presigned URL.
+    """
+    videos.sort(key=lambda v: v.index)
+    audios.sort(key=lambda a: a.index)
 
     tos_client = TOSClient()
 
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_film_file_path = f"{tmp_dir}/{req_id}.mp4"
-            final_video.write_videofile(tmp_film_file_path, codec="libx264", audio_codec="aac",
-                                        temp_audiofile_path=f"{tmp_dir}/")
-            INFO("generated final video")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        # Write video and audio bytes to temp files
+        video_paths = []
+        audio_paths = []
+        for i, (v, a) in enumerate(zip(videos, audios)):
+            vid_path = os.path.join(tmp_dir, f"video_{i}.mp4")
+            with open(vid_path, "wb") as f:
+                f.write(v.video_data)
+            video_paths.append(vid_path)
 
-            tos_bucket_name = ARTIFACT_TOS_BUCKET
-            tos_object_key = f"{req_id}/{Phase.FILM.value}.mp4"
-            tos_client.put_object_from_file(tos_bucket_name, tos_object_key, tmp_film_file_path)
-            INFO("put final video to TOS")
+            aud_path = os.path.join(tmp_dir, f"audio_{i}.mp3")
+            with open(aud_path, "wb") as f:
+                f.write(a.audio_data)
+            audio_paths.append(aud_path)
 
-    except Exception as e:
-        ERROR(f"failed to generate film, error: {e}")
-        raise InternalServiceError("failed to generate film")
+        # Get video size from first clip
+        video_width, video_height = _get_video_size(video_paths[0])
+
+        # Prepare panel clips in parallel (merge video + tts audio)
+        panel_args = [
+            (i, video_paths[i], audio_paths[i], os.path.join(tmp_dir, f"panel_{i}.mp4"))
+            for i in range(len(videos))
+        ]
+        with ThreadPoolExecutor(max_workers=min(len(panel_args), 4)) as pool:
+            panel_results = list(pool.map(_prepare_panel, panel_args))
+
+        panel_results.sort(key=lambda r: r[0])
+        panel_video_paths = [r[1] for r in panel_results]
+        panel_durations = [r[2] for r in panel_results]
+
+        # Build subtitle timing
+        cn_subtitles = []
+        en_subtitles = []
+        clip_start = 0.0
+        for t, duration in zip(tones, panel_durations):
+            clip_end = clip_start + duration
+            if t.line:
+                cn_subtitles.extend(_split_subtitle_by_sentences_cn(t.line, clip_start, clip_end))
+            if SUBTITLE_ENABLE_TRANSLATION and t.line_en:
+                en_subtitles.extend(_split_subtitle_by_sentences_en(t.line_en, clip_start, clip_end))
+            clip_start = clip_end
+
+        # Write ASS subtitle files
+        font_name = os.path.splitext(os.path.basename(_font))[0]
+        cn_ass_path = os.path.join(tmp_dir, "cn.ass")
+        with open(cn_ass_path, "w", encoding="utf-8") as f:
+            f.write(_build_ass_content(
+                cn_subtitles, "CN", font_name,
+                font_size=SUBTITLE_CN_FONT_SIZE, margin_v=60,
+                video_width=video_width, video_height=video_height,
+                max_chars_per_line=14,
+            ))
+
+        if SUBTITLE_ENABLE_TRANSLATION:
+            en_ass_path = os.path.join(tmp_dir, "en.ass")
+            with open(en_ass_path, "w", encoding="utf-8") as f:
+                f.write(_build_ass_content(
+                    en_subtitles, "EN", font_name,
+                    font_size=SUBTITLE_EN_FONT_SIZE, margin_v=25,
+                    video_width=video_width, video_height=video_height,
+                    max_chars_per_line=28,
+                ))
+
+        # Concat panel clips
+        concat_list_path = os.path.join(tmp_dir, "concat.txt")
+        with open(concat_list_path, "w") as f:
+            for p in panel_video_paths:
+                f.write(f"file '{p}'\n")
+
+        concat_path = os.path.join(tmp_dir, "concat.mp4")
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-f", "concat", "-safe", "0",
+                "-i", concat_list_path,
+                "-c", "copy",
+                concat_path,
+            ],
+            capture_output=True, check=True,
+        )
+
+        # Burn subtitles (one final encode pass)
+        def _esc(path: str) -> str:
+            return path.replace("\\", "/").replace(":", "\\:")
+
+        fontsdir = _esc(os.path.dirname(_font))
+        vf = f"subtitles={_esc(cn_ass_path)}:fontsdir={fontsdir}"
+        if SUBTITLE_ENABLE_TRANSLATION:
+            vf += f",subtitles={_esc(en_ass_path)}:fontsdir={fontsdir}"
+
+        tmp_film_path = os.path.join(tmp_dir, f"{req_id}.mp4")
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", concat_path,
+                "-vf", vf,
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-c:a", "aac",
+                tmp_film_path,
+            ],
+            capture_output=True, check=True,
+        )
+        INFO("generated final film via ffmpeg")
+
+        tos_bucket_name = ARTIFACT_TOS_BUCKET
+        tos_object_key = f"{req_id}/{Phase.FILM.value}.mp4"
+        try:
+            tos_client.put_object_from_file(tos_bucket_name, tos_object_key, tmp_film_path)
+            INFO("put final film to TOS")
+        except Exception as e:
+            ERROR(f"failed to put film to TOS, error: {e}")
+            raise InternalServiceError("failed to upload film")
 
     output = tos_client.pre_signed_url(tos_bucket_name, tos_object_key)
-    film_presigned_url = output.signed_url
-
-    return film_presigned_url
+    return output.signed_url
 
 
 class FilmGenerator(Generator):
@@ -280,16 +430,16 @@ class FilmGenerator(Generator):
 
         video_download_tasks = [asyncio.create_task(self._download_video(v)) for v in videos]
         audio_download_tasks = [asyncio.create_task(self._download_audio(a)) for a in audios]
-        tasks = video_download_tasks + audio_download_tasks
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*(video_download_tasks + audio_download_tasks))
 
-        # generate film by movie py. since moviepy has potential memory leak problem, a new process is created to run
-        # so that memory is automatically released after the process is terminated
         loop = asyncio.get_event_loop()
-        film_presiend_url = await loop.run_in_executor(ProcessPoolExecutor(), _generate_film,
-                                                       get_reqid(), tones, videos, audios)
+        film_presigned_url = await loop.run_in_executor(
+            ThreadPoolExecutor(max_workers=1),
+            _generate_film,
+            get_reqid(), tones, videos, audios,
+        )
 
-        content = {"film": Film(url=film_presiend_url).model_dump()}
+        content = {"film": Film(url=film_presigned_url).model_dump()}
         yield _get_tool_resp(0, json.dumps(content))
         yield _get_tool_resp(1)
 
@@ -299,8 +449,6 @@ class FilmGenerator(Generator):
             ERROR(f"video is not ready, index: {v.index}")
             raise InvalidParameter("messages", "video is not ready")
 
-        # https://ark-content-generation-cn-beijing-stg.tos-cn-beijing.volces.com/doubao-seedance-1-0-pro/
-        # 02175266550778400000000000000000000ffffc0a8a6e75de67d.mp4?
         video_url = video_gen_task.content.video_url
         if video_url is None:
             ERROR(f"video_url is empty, index: {v.index}")
@@ -316,26 +464,3 @@ class FilmGenerator(Generator):
         audio_data, _ = self.downloader_client.download_to_memory(a.url)
         a.audio_data = audio_data.read()
         INFO(f"downloaded audio, index: {a.index}")
-
-    def _parse_tos_url(self, url: str) -> Tuple[str, str]:
-        """
-        解析 TOS 对象存储 URL，提取 bucket name 和 object key。
-
-        示例：
-        https://my-bucket.tos-ap-cn-beijing.volces.com/path/to/file.jpg?query=...
-        → bucket: my-bucket
-          object_key: path/to/file.jpg
-        """
-        parsed = urlparse(url)
-
-        # 验证并解析 host
-        suffix = ".tos-cn-beijing.volces.com"
-        host = parsed.netloc
-        if not host.endswith(suffix):
-            raise ValueError(f"Invalid host: {host}, must end with {suffix}")
-        bucket_name = host[: -len(suffix)]
-
-        # 提取 object key（路径部分，去掉开头的 `/`）
-        object_key = parsed.path.lstrip("/")
-
-        return bucket_name, object_key

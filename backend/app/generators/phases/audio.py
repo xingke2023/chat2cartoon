@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
 import time
 from io import BytesIO
@@ -119,14 +120,13 @@ class AudioGenerator(Generator):
         content = {"audios": [audio.model_dump() for audio in generated_audios]}
 
         generated_audios_indexes = set([a.index for a in generated_audios])
-        for t in tones:
-            if t.index in generated_audios_indexes:
-                continue
-            url = await self._generate_audio(t.line, t.tone, t.index)
-            content["audios"].append(Audio(
-                index=t.index,
-                url=url,
-            ).model_dump())
+        tasks = [
+            self._generate_audio(t.line, t.tone, t.index)
+            for t in tones if t.index not in generated_audios_indexes
+        ]
+        results = await asyncio.gather(*tasks)
+        for url, t in zip(results, [t for t in tones if t.index not in generated_audios_indexes]):
+            content["audios"].append(Audio(index=t.index, url=url).model_dump())
 
         yield _get_tool_resp(0, json.dumps(content))
         yield _get_tool_resp(1)

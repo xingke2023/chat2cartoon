@@ -10,25 +10,12 @@
 // limitations under the License.
 
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
-
 import clsx from 'classnames';
-
 import styles from './index.module.less';
 
 interface Props {
-  /**
-   * 智能体名字
-   */
   name: string;
-
-  /**
-   * 智能体头像
-   */
   avatar: string;
-
-  /**
-   * 智能体开场白
-   */
   openingRemark:
     | string
     | {
@@ -36,55 +23,29 @@ interface Props {
         avatar: string;
         content: string;
       }[];
-
-  /**
-   * 预置问题
-   */
   preQuestions: string[];
-
-  /**
-   * 点击问题事件
-   * @param question
-   */
   onQuestionClick: (question: string) => void;
-
-  /**
-   * 是否已经开始对话
-   * 开启对话后，不再头像居中和展示预置问题
-   */
   chatStarted: boolean;
-
-  /**
-   * 是否 disable preQ
-   */
   disabled: boolean;
 }
 
-const Gap: FC<{ size: number }> = ({ size }) => <div style={{ height: size }} />;
-
-/**
- * 智能体头像组件
- * @param avatar 头像地址
- * @constructor
- */
 const Avatar = ({ avatar }: { avatar: string }) => (
-  <img className="w-[72px] h-[72px] border-white border  border-solid rounded-full" src={avatar} alt="avatar" />
+  <div className="relative">
+    <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full scale-150" />
+    <img 
+      className="w-24 h-24 border-4 border-white/20 shadow-2xl rounded-full relative z-10 object-cover" 
+      src={avatar} 
+      alt="avatar" 
+    />
+  </div>
 );
 
-/**
- * 智能体名字组件
- * @param name
- * @constructor
- */
 const Name = ({ name }: { name: string }) => (
-  <div className="text-[color:var(--color-text-1)] text-base font-medium">{name}</div>
+  <div className="text-3xl font-extrabold tracking-tight text-slate-800 mb-2">
+    {name}
+  </div>
 );
 
-/**
- * 智能体开场白
- * @param openingRemark
- * @constructor
- */
 const OpeningRemark = ({
   openingRemark,
 }: {
@@ -102,21 +63,25 @@ const OpeningRemark = ({
     return null;
   }
   return isArray ? (
-    <>
+    <div className="max-w-2xl w-full px-6">
       {openingRemark
         .filter(o => Boolean(o.content))
         .map(({ avatar, name, content }, idx) => (
-          <div className={clsx(idx !== 0 && 'mt-[20px]')} key={name}>
-            <div className="flex items-center gap-[4px]">
-              <img src={avatar} className="rounded-full w-[22px] h-[22px]" />
-              <div className="text-[#737A87] text-[12px] max-w-[350px] overflow-hidden text-ellipsis">{name}</div>
+          <div className={clsx(idx !== 0 && 'mt-6', "flex flex-col items-center")} key={name}>
+            <div className="flex items-center gap-2 mb-2">
+              <img src={avatar} className="rounded-full w-6 h-6 border border-white/50" />
+              <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider">{name}</div>
             </div>
-            <div className={clsx('ml-[26px]', styles.openingRemark)}>{content}</div>
+            <div className="bg-white/80 backdrop-blur-md border border-white/50 shadow-sm px-6 py-4 rounded-2xl text-slate-700 text-center text-lg leading-relaxed italic">
+              "{content}"
+            </div>
           </div>
         ))}
-    </>
+    </div>
   ) : (
-    <div className={clsx(styles.singleOpeningRemark)}>{openingRemark}</div>
+    <div className="max-w-xl text-slate-500 text-center text-lg leading-relaxed px-8 mb-8 font-light">
+      {openingRemark}
+    </div>
   );
 };
 
@@ -129,31 +94,29 @@ const PreQuestions = ({
   onQuestionClick: (question: string) => void;
   disabled?: boolean;
 }) => {
-  const questionPair = useMemo(
-    () =>
-      preQuestions.filter(preQ => Boolean(preQ)).map(question => [question, () => onQuestionClick(question)] as const),
-    [preQuestions, onQuestionClick],
+  const questions = useMemo(
+    () => preQuestions.filter(preQ => Boolean(preQ)),
+    [preQuestions]
   );
 
-  const [isAnimating, setIsAnimating] = useState(true);
-
-  useEffect(() => {
-    setIsAnimating(true);
-    setTimeout(() => setIsAnimating(false), 500);
-  }, []);
-
   return (
-    <div className={`mt-6 flex flex-col justify-center items-center text-white text-sm  ${isAnimating ? '' : ''}`}>
-      {questionPair.map(([question, onClick]) => (
-        <Fragment key={question}>
-          <div
-            onClick={() => !disabled && onClick()}
-            className={clsx(styles.preQItem, disabled && '!cursor-not-allowed')}
-          >
-            <div>{question}</div>
+    <div className="flex flex-col gap-3 w-full max-w-md px-6">
+      <div className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-1">推荐场景</div>
+      {questions.map((question) => (
+        <button
+          key={question}
+          disabled={disabled}
+          onClick={() => onQuestionClick(question)}
+          className={clsx(
+            "group relative px-6 py-4 bg-white hover:bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md rounded-2xl transition-all duration-300 text-left flex items-center gap-4",
+            disabled && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center text-blue-500 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </div>
-          <Gap size={8} />
-        </Fragment>
+          <span className="text-slate-700 text-[15px] font-medium leading-snug">{question}</span>
+        </button>
       ))}
     </div>
   );
@@ -169,33 +132,46 @@ export const Placeholder: FC<Props> = ({
   onQuestionClick,
 }) => {
   const [isAnimating, setIsAnimating] = useState(true);
+  
   useEffect(() => {
-    setIsAnimating(true);
-    setTimeout(() => setIsAnimating(false), 300);
+    const timer = setTimeout(() => setIsAnimating(false), 300);
+    return () => clearTimeout(timer);
   }, []);
+
+  if (chatStarted) {
+    return openingRemark ? (
+       <div className="pt-8 pb-4 opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0">
+         <div className="flex flex-col items-center gap-2">
+            <img src={avatar} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="" />
+            <div className="text-xs font-bold text-slate-400">{name}</div>
+         </div>
+       </div>
+    ) : null;
+  }
+
   return (
     <div
       className={clsx(
-        ' duration-300 px-[24px]',
-        isAnimating ? styles.openRemarkContainerFadeIn : 'opacity-100',
-        styles.openRemarkContainer,
-        chatStarted && '!mt-[0]',
-        chatStarted && !openingRemark?.length && 'h-0',
+        'w-full min-h-[70vh] flex flex-col items-center justify-center py-12 transition-all duration-700 ease-out',
+        isAnimating ? 'translate-y-8 opacity-0' : 'translate-y-0 opacity-100'
       )}
     >
-      <div className={clsx(!openingRemark && 'mt-[160px]', 'self-center flex justify-center items-center flex-col')}>
-        {!chatStarted && (
-          <>
-            <Avatar avatar={avatar} />
-            <Gap size={16} />
-            <Name name={name} />
-          </>
-        )}
+      <div className="flex flex-col items-center mb-8">
+        <Avatar avatar={avatar} />
+        <div className="mt-6 text-center">
+          <Name name={name} />
+          <div className="h-1 w-12 bg-blue-500/20 rounded-full mx-auto" />
+        </div>
       </div>
-      {!chatStarted && <OpeningRemark openingRemark={openingRemark} />}
-      {!chatStarted ? (
-        <PreQuestions disabled={disabled} onQuestionClick={onQuestionClick} preQuestions={preQuestions} />
-      ) : null}
+      
+      <OpeningRemark openingRemark={openingRemark} />
+      
+      <PreQuestions 
+        disabled={disabled} 
+        onQuestionClick={onQuestionClick} 
+        preQuestions={preQuestions} 
+      />
     </div>
   );
 };
+

@@ -29,6 +29,12 @@ function unique<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
 
+/** Strip leading "phase=Xxx\n\n" prefix before JSON.parse */
+function parsePhaseJson(content: string): any {
+  const raw = content.replace(/^phase=\w+\s*/, '').trim();
+  return JSON.parse(raw);
+}
+
 export interface ParsedData {
   roleDescription: ParsedOriginData[];
   roleImage: ParsedOriginData[];
@@ -73,7 +79,7 @@ export const useParseOriginData = (messages: ComplexMessage) => {
       if (!messageItem) {
         return undefined;
       }
-      const parsedData = JSON.parse(messageItem.content);
+      const parsedData = parsePhaseJson(messageItem.content);
       // 数据在下面属性里
       if (UserConfirmationDataKey.RoleImage in parsedData) {
         return parsedData.role_images as { index: number; images: string[] }[];
@@ -103,7 +109,7 @@ export const useParseOriginData = (messages: ComplexMessage) => {
       if (!messageItem) {
         return undefined;
       }
-      const parsedData = JSON.parse(messageItem.content);
+      const parsedData = parsePhaseJson(messageItem.content);
       // 数据在下面属性里
       if (UserConfirmationDataKey.FirstFrameImages in parsedData) {
         return parsedData.first_frame_images as { index: number; images: string[] }[];
@@ -133,7 +139,7 @@ export const useParseOriginData = (messages: ComplexMessage) => {
       if (!messageItem) {
         return undefined;
       }
-      const parsedData = JSON.parse(messageItem.content);
+      const parsedData = parsePhaseJson(messageItem.content);
       // 数据在下面属性里
       if (UserConfirmationDataKey.Videos in parsedData) {
         return parsedData.videos.map((item: { index: number; video_gen_task_id: string }) => ({
@@ -159,7 +165,7 @@ export const useParseOriginData = (messages: ComplexMessage) => {
       if (!messageItem) {
         return undefined;
       }
-      const parsedData = JSON.parse(messageItem.content);
+      const parsedData = parsePhaseJson(messageItem.content);
       // 数据在下面属性里
       if (UserConfirmationDataKey.Tones in parsedData) {
         return parsedData.tones as { index: number; tone: string; lines: string; lines_en: string }[];
@@ -180,7 +186,7 @@ export const useParseOriginData = (messages: ComplexMessage) => {
       if (!messageItem) {
         return undefined;
       }
-      const parsedData = JSON.parse(messageItem.content);
+      const parsedData = parsePhaseJson(messageItem.content);
       // 数据在下面属性里
       if (UserConfirmationDataKey.Audios in parsedData) {
         return parsedData.audios as { index: number; url: string }[];
@@ -201,7 +207,7 @@ export const useParseOriginData = (messages: ComplexMessage) => {
       if (!messageItem) {
         return undefined;
       }
-      const parsedData = JSON.parse(messageItem.content);
+      const parsedData = parsePhaseJson(messageItem.content);
       // 数据在下面属性里
       if ('film' in parsedData) {
         return [{ index: 0, url: parsedData.film.url }];

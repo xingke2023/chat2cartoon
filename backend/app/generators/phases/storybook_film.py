@@ -15,7 +15,7 @@ import os
 import subprocess
 import tempfile
 import time
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterable, Optional, List
 
 from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
@@ -194,7 +194,8 @@ def _make_panel_video(args):
                    f"crop={width}:{height}",
             "-c:v", "libx264",
             "-pix_fmt", "yuv420p",
-            "-preset", "fast",
+            "-preset", "ultrafast",
+            "-tune", "stillimage",
             output_path,
         ],
         capture_output=True, check=True,
@@ -349,7 +350,7 @@ def _generate_storybook_film(
                 "-i", merged_audio_path,
                 "-vf", vf,
                 "-c:v", "libx264",
-                "-preset", "fast",
+                "-preset", "ultrafast",
                 "-c:a", "aac",
                 "-shortest",
                 tmp_film_path,
@@ -441,7 +442,7 @@ class StorybookFilmGenerator(Generator):
         # Run ffmpeg composition in a separate process to avoid blocking the event loop
         loop = asyncio.get_event_loop()
         film_presigned_url = await loop.run_in_executor(
-            ProcessPoolExecutor(max_workers=1),
+            ThreadPoolExecutor(max_workers=1),
             _generate_storybook_film,
             get_reqid(),
             tones,

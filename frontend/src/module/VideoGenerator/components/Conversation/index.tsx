@@ -10,6 +10,7 @@
 // limitations under the License.
 
 import { useContext, useMemo } from 'react';
+import clsx from 'classnames';
 
 import { Button } from '@arco-design/web-react';
 
@@ -79,51 +80,55 @@ const Conversation = () => {
   const { visible: isFullScreen } = useStartChatWithVideo();
 
   return (
-    <div className={styles.conversationWrapper}>
+    <div className={clsx(styles.conversationWrapper, "bg-[#F8FAFC]")}>
       <div className={styles.displayBar}>
       </div>
       <div className={styles.conversationContainer}>
         <div
-          className={styles.conversationChatAreaContainer}
+          className={clsx(styles.conversationChatAreaContainer, "pb-40")}
           ref={chatMessageListRef}
           onScroll={e => handleScroll(e.currentTarget)}
         >
-          <div className="h-full">
+          <div className="max-w-4xl mx-auto w-full px-4 md:px-8">
             <Placeholder {...(getPlaceHolderProps() as any)} />
             <ChatArea messages={renderedMessages} />
           </div>
         </div>
-        {!renderedMessages.find(item => item.type === VideoGeneratorMessageType.Multiple) && !isFullScreen && (
-          <div className={styles.conversationInputContainer}>
-            <>
-              {!finishPhase ||
-                ([VideoGeneratorTaskPhase.PhaseScript, VideoGeneratorTaskPhase.PhaseStoryBoard].includes(
+        {!isFullScreen && !renderedMessages.find(item => item.type === VideoGeneratorMessageType.Multiple) && (
+          <div className={clsx(
+            styles.conversationInputContainer,
+            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/90 to-transparent pt-12 pb-8 px-4"
+          )}>
+            <div className="max-w-3xl mx-auto w-full">
+              {(!finishPhase ||
+                [VideoGeneratorTaskPhase.PhaseScript, VideoGeneratorTaskPhase.PhaseStoryBoard].includes(
                   finishPhase as VideoGeneratorTaskPhase,
-                ) && (
-                  <div className={styles.resetBtnWrapper}>
-                    <Button
-                      className={styles.resetBtn}
-                      size="small"
-                      icon={<IconClean />}
-                      onClick={() => {
-                        resetMessages();
-                      }}
-                    >
-                      {'清空当前对话'}
-                    </Button>
-                  </div>
-                ))}
-            </>
-            <MessageInput
-              activeSendBtn={true}
-              autoFocus
-              placeholder={
-                '请输入问题，体验智能体能力'
-              }
-              canSendMessage={!sending}
-              sendMessage={handleSend}
-              extra={inputValue => LimitIndicator && <LimitIndicator text={inputValue} />}
-            />
+                )) && showMessageList && (
+                <div className={styles.resetBtnWrapper}>
+                  <Button
+                    className={clsx(styles.resetBtn, "!rounded-full !bg-white !shadow-sm !border-[#E2E8F0] !text-slate-500 !text-xs !px-4 hover:!border-blue-500 transition-all")}
+                    size="small"
+                    icon={<IconClean />}
+                    onClick={() => resetMessages()}
+                  >
+                    {'重置会话'}
+                  </Button>
+                </div>
+              )}
+              {!showMessageList && (
+                <div className="relative group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+                  <MessageInput
+                    activeSendBtn={true}
+                    autoFocus
+                    placeholder={'粘贴您的文案原文，我将为您自动拆解分镜...'}
+                    canSendMessage={!sending}
+                    sendMessage={handleSend}
+                    extra={inputValue => LimitIndicator && <LimitIndicator text={inputValue} />}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
         <WatchAndChat />

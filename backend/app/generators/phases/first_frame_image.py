@@ -79,16 +79,16 @@ class FirstFrameImageGenerator(Generator):
         self.mode = mode
         if content_mode == MODE_INSURANCE_CASE:
             self.image_style_suffix = "卡通风格插图，现代都市卡通风格，3D渲染。"
-            self.image_size = None
+            self.image_size = "1440x2560"
         elif content_mode == MODE_STORY_NARRATION:
             self.image_style_suffix = "卡通插画风格，色彩鲜明，画面感强。"
-            self.image_size = None  # use default size, ffmpeg will crop to 9:16
+            self.image_size = "1440x2560"
         elif content_mode == MODE_TEXT_TO_STORYBOARD:
             self.image_style_suffix = "卡通插画风格，色彩鲜明，画面感强。"
-            self.image_size = None
+            self.image_size = "1440x2560"
         else:
             self.image_style_suffix = "卡通风格插图，3D渲染。"
-            self.image_size = None
+            self.image_size = "1440x2560"
         self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:

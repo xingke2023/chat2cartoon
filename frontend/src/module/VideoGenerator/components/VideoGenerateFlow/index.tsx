@@ -320,9 +320,7 @@ const VideoGenerateFlow = (props: Props) => {
                         prompt={item.description}
                         header={
                           <MediaCardHeader
-                            title={`
-                              故事角色 ${index + 1}
-                            `}
+                            title={`角色${index + 1}${item.role ? `：${item.role}` : ''}`}
                           />
                         }
                         type="image"

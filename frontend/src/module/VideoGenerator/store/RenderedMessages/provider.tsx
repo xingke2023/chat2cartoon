@@ -483,7 +483,8 @@ const RenderedMessagesProvider = (props: PropsWithChildren<Props>) => {
         if (!messageItem) {
           return;
         }
-        const parsedData = JSON.parse(messageItem.content);
+        const rawContent = messageItem.content.replace(/^phase=\w+\s*/, '').trim();
+        const parsedData = JSON.parse(rawContent);
         // 更新 ref
         updateConfirmationMessage(parsedData);
       } catch {}

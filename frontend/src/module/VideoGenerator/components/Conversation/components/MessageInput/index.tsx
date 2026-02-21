@@ -307,22 +307,22 @@ export const MessageInput = (props: Props) => {
       onClick={() => handleFocus()}
       id="message-input"
       className={clsx(
-        'w-full  relative self-stretch box-border px-4 pt-[10px] pb-[10px] bg-white rounded-lg border  flex-col justify-start items-start gap-2 flex transition-all duration-300 overflow-y-hidden',
-        expanded ? ' border-[#6C54FF]' : ' border-[#BDB8E5]',
-        props?.expandDisabled && 'bg-[#FCFDFE]',
-        expanded ? 'h-[84px]' : 'h-[50px] ',
+        'w-full relative self-stretch box-border px-5 pt-3 pb-3 bg-white rounded-2xl border flex-col justify-start items-start gap-2 flex transition-all duration-300 overflow-y-hidden shadow-sm',
+        expanded ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200',
+        props?.expandDisabled && 'bg-slate-50',
+        expanded ? 'h-[100px]' : 'h-[56px]',
       )}
       ref={containerRef}
     >
-      <div className=" self-stretch justify-start items-center gap-0.5 inline-flex">
+      <div className="self-stretch justify-start items-center gap-0.5 inline-flex">
         <textarea
           style={{
             scrollbarWidth: 'none',
           }}
           rows={1}
           className={clsx(
-            'focus:ring-0 focus-visible:ring-0 w-full text-[#0C0D0E] leading-[22px] p-0 border-0 text-[13px] overflow-hidden tracking-tight focus:outline-none resize-none max-h-[88px]h-[22px] mt-[3px] mb-[3px]',
-            props?.expandDisabled && 'bg-[#FCFDFE]',
+            'focus:ring-0 focus-visible:ring-0 w-full text-slate-700 leading-relaxed p-0 border-0 text-[15px] overflow-hidden tracking-tight focus:outline-none resize-none max-h-[88px] h-[24px] mt-1 mb-1 font-medium',
+            props?.expandDisabled && 'bg-slate-50',
           )}
           placeholder={props.placeholder}
           value={message}
@@ -335,17 +335,18 @@ export const MessageInput = (props: Props) => {
         />
       </div>
       {expanded ? (
-        <div className="animate-fade-in pt-4 self-stretch justify-between items-end inline-flex absolute bottom-[12px] left-[16px]">
+        <div className="animate-fade-in pt-4 self-stretch justify-between items-end inline-flex absolute bottom-4 left-5">
           {props.extra(message)}
         </div>
       ) : null}
-      <div className="absolute bottom-[11px] right-[60px] flex items-center ">
+      <div className="absolute bottom-3 right-16 flex items-center ">
         {props?.actions?.map(action => action)}
       </div>
       <div
-        className={`w-11 h-7 bottom-[10px] right-[16px] absolute rounded-[14px] transition-all duration-300${
-          triggerCanNotSendMessage ? ' animate-shake' : ''
-        }`}
+        className={clsx(
+          "w-11 h-8 bottom-3 right-4 absolute rounded-xl transition-all duration-300",
+          triggerCanNotSendMessage ? 'animate-shake' : ''
+        )}
         onAnimationEnd={() => setTriggerCanNotSendMessage(false)}
       >
         <SendButton active={activeSendButton} onClick={handleSendMessage} />
