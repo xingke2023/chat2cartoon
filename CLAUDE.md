@@ -4,6 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+### 服务管理（使用 supervisorctl）
+```bash
+sudo supervisorctl status                          # 查看所有服务状态
+sudo supervisorctl restart chat2cartoon-backend    # 重启后端
+sudo supervisorctl restart chat2cartoon-frontend   # 重启前端
+sudo supervisorctl restart chat2cartoon-static     # 重启静态文件服务
+sudo supervisorctl restart all                     # 重启所有服务
+sudo supervisorctl stop chat2cartoon-backend       # 停止后端
+sudo supervisorctl start chat2cartoon-backend      # 启动后端
+```
+
+日志文件：
+- 后端：`/var/log/supervisor/chat2cartoon-backend.log`
+- 前端：`/var/log/supervisor/chat2cartoon-frontend.log`
+- 静态：`/var/log/supervisor/chat2cartoon-static.log`
+
 ### Backend
 ```bash
 cd backend

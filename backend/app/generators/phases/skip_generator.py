@@ -13,7 +13,7 @@ import json
 import time
 from typing import AsyncIterable, Optional
 
-from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
+from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
 from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta, ChoiceDeltaToolCall, \
     ChoiceDeltaToolCallFunction

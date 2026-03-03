@@ -182,6 +182,8 @@ const Index = () => {
   const [inputPwd, setInputPwd] = useState('');
   const [pwdError, setPwdError] = useState(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingMode, setPendingMode] = useState<string | null>(null);
   const storeKey = useMemo(() => localStorage.getItem('ark-interactive-video-store-key') || uuidV4(), []);
 
   useEffect(() => {
@@ -189,7 +191,12 @@ const Index = () => {
   }, [storeKey]);
 
   const handleSelectMode = (mode: string) => {
-    setSelectedMode(mode);
+    if (authed) {
+      setSelectedMode(mode);
+    } else {
+      setPendingMode(mode);
+      setShowAuthModal(true);
+    }
   };
 
   const handleBack = () => {
@@ -200,102 +207,20 @@ const Index = () => {
     if (inputPwd === ACCESS_PASSWORD) {
       setAuthed(true);
       setPwdError(false);
+      setShowAuthModal(false);
+      setSelectedMode(pendingMode);
+      setPendingMode(null);
     } else {
       setPwdError(true);
     }
   };
-
-  if (!authed) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}>
-        <Background />
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(16px)',
-          borderRadius: 24,
-          padding: '48px 40px',
-          width: '100%',
-          maxWidth: 400,
-          boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 24,
-        }}>
-          <div style={{ 
-            width: 80, 
-            height: 80, 
-            background: 'rgba(255,255,255,0.1)', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            fontSize: 40 
-          }}>🔒</div>
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 8 }}>身份验证</h2>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>请输入访问密码以继续</p>
-          </div>
-          <input
-            type="password"
-            value={inputPwd}
-            onChange={e => { setInputPwd(e.target.value); setPwdError(false); }}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            autoFocus
-            placeholder="访问密码"
-            style={{
-              width: '100%',
-              padding: '14px 18px',
-              background: 'rgba(0,0,0,0.2)',
-              border: `1px solid ${pwdError ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: 12,
-              fontSize: 16,
-              color: '#fff',
-              outline: 'none',
-              boxSizing: 'border-box',
-              transition: 'all 0.3s ease',
-            }}
-          />
-          {pwdError && (
-            <div style={{ color: '#ef4444', fontSize: 13, marginTop: -8 }}>密码错误，请重试</div>
-          )}
-          <button
-            onClick={handleLogin}
-            style={{
-              width: '100%',
-              padding: '14px 0',
-              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              fontSize: 16,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'transform 0.2s ease',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            立即进入
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (selectedMode) {
     const config = MODE_CONFIG[selectedMode as keyof typeof MODE_CONFIG];
     return (
       <div>
         <Helmet>
-          <title>{config.name} - 互动双语视频生成器</title>
+          <title>{config.name} - 港险宣传视频生成器</title>
           <link
             rel="icon"
             type="image/x-icon"
@@ -370,8 +295,6 @@ const Index = () => {
   }
 
   const modes = [
-    { key: MODE_CHILDREN_STORY, config: MODE_CONFIG[MODE_CHILDREN_STORY] },
-    { key: MODE_INSURANCE_CASE, config: MODE_CONFIG[MODE_INSURANCE_CASE] },
     { key: MODE_STORY_NARRATION, config: MODE_CONFIG[MODE_STORY_NARRATION] },
     { key: MODE_TEXT_TO_STORYBOARD, config: MODE_CONFIG[MODE_TEXT_TO_STORYBOARD] },
   ];
@@ -379,7 +302,7 @@ const Index = () => {
   return (
     <div>
       <Helmet>
-        <title>互动双语视频生成器</title>
+        <title>港险宣传视频生成器</title>
         <link
           rel="icon"
           type="image/x-icon"
@@ -409,7 +332,7 @@ const Index = () => {
           }}>
             <img src={doubaoLogo} alt="Doubao Logo" style={{ height: 32 }} />
             <div style={{ fontSize: 18, fontWeight: 600, color: '#fff', opacity: 0.9 }}>
-              AI 创意实验工坊
+              保险人文案转视频制作工具
             </div>
           </div>
 
@@ -424,7 +347,7 @@ const Index = () => {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
-              互动双语视频生成器
+              港险宣传视频生成器
             </h1>
             <p style={{
               color: 'rgba(255,255,255,0.6)',
@@ -434,17 +357,16 @@ const Index = () => {
               margin: '0 auto',
               lineHeight: 1.6,
             }}>
-              由豆包大模型驱动，通过自然对话将您的文字灵感转化为生动的配音动画分镜。
+              通过自然对话将您的文字灵感转化为生动的配音动画分镜。
             </p>
           </div>
 
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: 32,
+            display: 'flex',
+            gap: 16,
             width: '100%',
-            maxWidth: 1320,
-            justifyItems: 'center',
+            maxWidth: 800,
+            justifyContent: 'center',
           }}>
             {modes.map((item, index) => (
               <Card 
@@ -457,8 +379,36 @@ const Index = () => {
             ))}
           </div>
 
+          {/* 案例视频展示 */}
           <div style={{
-            marginTop: 80,
+            display: 'flex',
+            gap: 24,
+            width: '100%',
+            maxWidth: 1100,
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            marginTop: 48,
+          }}>
+            {['/videos/Film_storybook8.mp4', '/videos/Film_storybook9.mp4'].map((src, i) => (
+              <div key={i} style={{
+                flex: '1 1 280px',
+                maxWidth: 360,
+                borderRadius: 16,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                background: 'rgba(0,0,0,0.3)',
+              }}>
+                <video src={src} controls style={{ width: '100%', display: 'block' }} />
+                <div style={{ padding: '10px 14px', fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                  案例 {i + 1}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            marginTop: 48,
             padding: '20px 32px',
             background: 'rgba(255,255,255,0.03)',
             borderRadius: 20,
@@ -474,6 +424,69 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      {/* 身份验证模态框 */}
+      {showAuthModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowAuthModal(false); setInputPwd(''); setPwdError(false); } }}
+        >
+          <div style={{
+            background: 'rgba(15,23,42,0.95)',
+            backdropFilter: 'blur(16px)',
+            borderRadius: 24,
+            padding: '48px 40px',
+            width: '100%',
+            maxWidth: 400,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 24,
+          }}>
+            <div style={{ width: 80, height: 80, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🔒</div>
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 8 }}>身份验证</h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>请输入访问密码以继续</p>
+            </div>
+            <input
+              type="password"
+              value={inputPwd}
+              onChange={e => { setInputPwd(e.target.value); setPwdError(false); }}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              autoFocus
+              placeholder="访问密码"
+              style={{
+                width: '100%', padding: '14px 18px',
+                background: 'rgba(0,0,0,0.2)',
+                border: `1px solid ${pwdError ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 12, fontSize: 16, color: '#fff',
+                outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease',
+              }}
+            />
+            {pwdError && <div style={{ color: '#ef4444', fontSize: 13, marginTop: -8 }}>密码错误，请重试</div>}
+            <button
+              onClick={handleLogin}
+              style={{
+                width: '100%', padding: '14px 0',
+                background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                color: '#fff', border: 'none', borderRadius: 12,
+                fontSize: 16, fontWeight: 600, cursor: 'pointer', transition: 'transform 0.2s ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              立即进入
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

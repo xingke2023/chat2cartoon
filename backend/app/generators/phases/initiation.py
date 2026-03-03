@@ -11,7 +11,7 @@
 
 from typing import AsyncIterable
 
-from arkitect.core.component.llm.model import ArkChatRequest, ArkMessage, ArkChatResponse
+from arkitect.types.llm.model import ArkChatRequest, ArkMessage, ArkChatResponse
 from arkitect.core.errors import InternalServiceError
 
 from app.clients.llm import LLMClient

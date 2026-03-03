@@ -11,7 +11,7 @@
 
 from typing import AsyncIterable
 
-from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
+from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
 
 from app.clients.llm import LLMClient
 from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD

@@ -19,7 +19,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterable, Optional, List, Tuple
 
-from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
+from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
 from arkitect.core.errors import InvalidParameter, InternalServiceError
 from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime import Ark
@@ -298,7 +298,7 @@ def _generate_film(req_id: str, tones: List[Tone], videos: List[Video], audios: 
             clip_start = clip_end
 
         # Write ASS subtitle files
-        font_name = os.path.splitext(os.path.basename(_font))[0]
+        font_name = "Douyin Sans"
         cn_ass_path = os.path.join(tmp_dir, "cn.ass")
         with open(cn_ass_path, "w", encoding="utf-8") as f:
             f.write(_build_ass_content(

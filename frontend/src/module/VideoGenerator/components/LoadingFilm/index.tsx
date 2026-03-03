@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 // Licensed under the 【火山方舟】原型应用软件自用许可协议
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at 
+// You may obtain a copy of the License at
 //     https://www.volcengine.com/docs/82379/1433703
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,8 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Progress, Spin } from '@arco-design/web-react';
-
+import { Spin } from '@arco-design/web-react';
 
 import styles from './index.module.less';
 import { RunningPhaseStatus } from '../../types';
@@ -20,6 +19,21 @@ import { RunningPhaseStatus } from '../../types';
 interface Props {
   runningPhaseStatus: RunningPhaseStatus;
 }
+
+const STEPS = [
+  { threshold: 0,  label: '下载素材中' },
+  { threshold: 30, label: '生成画面中' },
+  { threshold: 60, label: '合成视频中' },
+  { threshold: 85, label: '上传视频中' },
+];
+
+const getStepLabel = (percent: number) => {
+  let label = STEPS[0].label;
+  for (const step of STEPS) {
+    if (percent >= step.threshold) label = step.label;
+  }
+  return label;
+};
 
 const LoadingFilm = (props: Props) => {
   const { runningPhaseStatus } = props;
@@ -34,7 +48,7 @@ const LoadingFilm = (props: Props) => {
             clearInterval(timerRef.current);
             return 98;
           }
-          return prev + 2;
+          return prev + 1;
         });
       }, 1000);
     }
@@ -54,25 +68,15 @@ const LoadingFilm = (props: Props) => {
     };
   }, [runningPhaseStatus]);
 
+  const isPending = runningPhaseStatus === RunningPhaseStatus.Pending;
+
   return (
     <div className={styles.loadingContainer}>
-      {runningPhaseStatus === RunningPhaseStatus.Pending && (
-        <>
-          <Spin size={16} />
-          <Progress
-            percent={percent}
-            color={{
-              '0%': '#ce63ff',
-              '40%': '#0093ff',
-              '100%': '#0060ff',
-            }}
-            className={styles.progress}
-            size="mini"
-            showText={false}
-          />
-        </>
-      )}
-      <span>{'视频剪辑中'}</span>
+      {isPending && <Spin size={14} />}
+      <span className={styles.stepLabel}>
+        {isPending ? getStepLabel(percent) : '视频剪辑中'}
+      </span>
+      {isPending && <span className={styles.percent}>{percent}%</span>}
     </div>
   );
 };

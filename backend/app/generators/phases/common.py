@@ -11,7 +11,7 @@
 
 import time
 
-from arkitect.core.component.llm.model import ArkChatCompletionChunk, ArkMessage
+from arkitect.types.llm.model import ArkChatCompletionChunk, ArkMessage
 from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 

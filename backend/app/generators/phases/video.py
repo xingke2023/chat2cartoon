@@ -16,7 +16,7 @@ from typing import AsyncIterable, Tuple, List, Optional
 
 import requests
 import tos
-from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
+from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
 from arkitect.utils.context import get_reqid, get_resource_id
 from arkitect.core.errors import InvalidParameter
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import ChoiceDelta, Choice, ChoiceDeltaToolCall, \

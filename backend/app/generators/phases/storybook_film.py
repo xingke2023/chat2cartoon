@@ -18,7 +18,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterable, Optional, List
 
-from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
+from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
 from arkitect.core.errors import InvalidParameter, InternalServiceError
 from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta, ChoiceDeltaToolCall, \
@@ -274,7 +274,7 @@ def _generate_storybook_film(
 
         # Write ASS subtitle files
         cn_ass_path = os.path.join(tmp_dir, "cn.ass")
-        font_name = os.path.splitext(os.path.basename(_font))[0]
+        font_name = "Douyin Sans"
 
         with open(cn_ass_path, "w", encoding="utf-8") as f:
             f.write(_build_ass_content(
@@ -437,9 +437,10 @@ class StorybookFilmGenerator(Generator):
         image_download_tasks = [asyncio.create_task(self._download_image(ffi)) for ffi in first_frame_images]
         await asyncio.gather(*(audio_download_tasks + image_download_tasks))
 
-        # Run ffmpeg composition in a separate process to avoid blocking the event loop
+        # Run ffmpeg composition in a separate thread to avoid blocking the event loop.
+        # While waiting, yield keepalive chunks every 20s to prevent proxy timeout.
         loop = asyncio.get_event_loop()
-        film_presigned_url = await loop.run_in_executor(
+        film_future = loop.run_in_executor(
             ThreadPoolExecutor(max_workers=1),
             _generate_storybook_film,
             get_reqid(),
@@ -447,6 +448,22 @@ class StorybookFilmGenerator(Generator):
             first_frame_images,
             audios,
         )
+
+        while not film_future.done():
+            try:
+                await asyncio.wait_for(asyncio.shield(film_future), timeout=20)
+                break
+            except asyncio.TimeoutError:
+                # Send a keepalive empty chunk so the SSE connection stays alive
+                yield ArkChatCompletionChunk(
+                    id=get_reqid(),
+                    choices=[Choice(index=0, delta=ChoiceDelta(content=""))],
+                    created=int(time.time()),
+                    model=get_resource_id(),
+                    object="chat.completion.chunk",
+                )
+
+        film_presigned_url = await film_future
 
         content = {"film": Film(url=film_presigned_url).model_dump()}
         yield _get_tool_resp(0, json.dumps(content))

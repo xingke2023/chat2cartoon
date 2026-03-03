@@ -12,7 +12,7 @@
 import time
 from typing import AsyncIterable
 
-from arkitect.core.component.llm.model import ArkMessage, ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
+from arkitect.types.llm.model import ArkMessage, ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk
 from arkitect.utils.context import get_reqid, get_resource_id
 from arkitect.core.errors import InvalidParameter
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta

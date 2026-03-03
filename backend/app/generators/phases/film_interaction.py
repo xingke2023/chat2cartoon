@@ -14,8 +14,8 @@ import base64
 import time
 from typing import AsyncIterable, List
 
-from arkitect.core.component.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk, ArkMessage, \
-    ChatCompletionMessageImageUrlPart
+from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkChatCompletionChunk, ArkMessage
+from volcenginesdkarkruntime.types.chat import ChatCompletionContentPartImageParam as ChatCompletionMessageImageUrlPart
 from arkitect.core.component.tts import AsyncTTSClient, AudioParams, ConnectionParams, create_bot_audio_responses
 from arkitect.core.component.tts.constants import EventTTSSentenceStart, EventTTSSentenceEnd, EventSessionFinished
 from arkitect.telemetry.trace import task

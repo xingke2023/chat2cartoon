@@ -272,7 +272,7 @@ class TTSClient:
     ):
         headers = self.build_http_header(self.conn_id, self.log_id)
         INFO("with logID: %s , header: %s", self.log_id, headers)
-        self.conn = await websockets.connect(TTS_BASE_URL, extra_headers=headers, max_size=None)
+        self.conn = await websockets.connect(TTS_BASE_URL, additional_headers=headers, max_size=None)
         # Monkey-patch to bypass UTF-8 decoding for text frames containing binary data
         original_read_message = self.conn.read_message
         async def _read_message_raw():
@@ -541,7 +541,7 @@ async def tts(text: str, params: dict, speaker: str = TTS_DEFAULT_SPEAKER):
     endpoint = "wss://openspeech.bytedance.com/api/v1/tts/ws_binary"
     headers = {"Authorization": f"Bearer;{TTS_ACCESS_KEY}"}
 
-    ws = await websockets.connect(endpoint, extra_headers=headers, max_size=10 * 1024 * 1024)
+    ws = await websockets.connect(endpoint, additional_headers=headers, max_size=10 * 1024 * 1024)
     try:
         request_data = _build_v1_request(text, speaker)
         await ws.send(request_data)

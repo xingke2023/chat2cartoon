@@ -12,7 +12,7 @@
 from typing import List, AsyncIterable
 
 from arkitect.core.component.llm import BaseChatLanguageModel
-from arkitect.core.component.llm.model import ArkChatParameters, ArkMessage, ArkChatResponse
+from arkitect.types.llm.model import ArkChatParameters, ArkMessage, ArkChatResponse
 from arkitect.utils import AsyncTimedIterable
 
 
@@ -26,7 +26,7 @@ class VLMClient:
         messages = list(filter(lambda m: m.role in ["system", "assistant", "user"], messages))
 
         vlm_chat = BaseChatLanguageModel(
-            endpoint_id=self.endpoint_id,
+            model=self.endpoint_id,
             messages=messages,
             parameters=ArkChatParameters(temperature=1.0, top_p=0.7),
         )

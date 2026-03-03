@@ -12,7 +12,7 @@
 import json
 from typing import List, Dict, Any
 
-from arkitect.core.component.llm.model import ArkMessage
+from arkitect.types.llm.model import ArkMessage
 from arkitect.core.errors import InvalidParameter
 
 from app.logger import ERROR

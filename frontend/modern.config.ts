@@ -39,6 +39,13 @@ export default defineConfig({
         ['/api/v3/bots']: {
           target: 'http://localhost:8890',
           changeOrigin: true,
+          timeout: 600000,
+          proxyTimeout: 600000,
+        },
+        ['/videos']: {
+          target: 'http://localhost:8892',
+          changeOrigin: true,
+          pathRewrite: { '^/videos': '' },
         },
       }
     }
