@@ -18,7 +18,7 @@ from arkitect.utils.context import get_reqid, get_resource_id
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
@@ -28,9 +28,11 @@ from app.output_parsers import parse_tone
 from app.generators.prompts.insurance_case import TONE_SYSTEM_PROMPT as INSURANCE_TONE_PROMPT
 from app.generators.prompts.story_narration import TONE_SYSTEM_PROMPT as STORY_NARRATION_TONE_PROMPT
 from app.generators.prompts.text_to_storyboard import TONE_SYSTEM_PROMPT as TEXT_TO_STORYBOARD_TONE_PROMPT
+from app.generators.prompts.text_to_video import TONE_SYSTEM_PROMPT as TEXT_TO_VIDEO_TONE_PROMPT
 
 _STORY_NARRATION_MODE = MODE_STORY_NARRATION
 _TEXT_TO_STORYBOARD_MODE = MODE_TEXT_TO_STORYBOARD
+_TEXT_TO_VIDEO_MODE = MODE_TEXT_TO_VIDEO
 
 TONE_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -138,6 +140,8 @@ class ToneGenerator(Generator):
             self.system_prompt = STORY_NARRATION_TONE_PROMPT
         elif content_mode == MODE_TEXT_TO_STORYBOARD:
             self.system_prompt = TEXT_TO_STORYBOARD_TONE_PROMPT
+        elif content_mode == MODE_TEXT_TO_VIDEO:
+            self.system_prompt = TEXT_TO_VIDEO_TONE_PROMPT
         else:
             self.system_prompt = TONE_SYSTEM_PROMPT
 
@@ -163,7 +167,7 @@ class ToneGenerator(Generator):
             # In story_narration / text_to_storyboard mode, the LLM may paraphrase the dialogue.
             # Overwrite line/line_en with the verbatim text from StoryBoard to keep
             # audio and subtitles exactly consistent with the original story.
-            if self.content_mode in (_STORY_NARRATION_MODE, _TEXT_TO_STORYBOARD_MODE):
+            if self.content_mode in (_STORY_NARRATION_MODE, _TEXT_TO_STORYBOARD_MODE, _TEXT_TO_VIDEO_MODE):
                 _, storyboards = self.phase_finder.get_storyboards()
                 for tone in tones:
                     if tone.index < len(storyboards):

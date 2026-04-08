@@ -9,7 +9,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from arkitect.types.llm.model import ArkMessage
+from arkitect.core.component.llm.model import ArkMessage
+from app.constants import MAX_STORY_BOARD_NUMBER_INSURANCE
 
 SCRIPT_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -57,7 +58,7 @@ phase=Script
 
 STORY_BOARD_SYSTEM_PROMPT = ArkMessage(
     role="system",
-    content="""# 角色
+    content=f"""# 角色
 你是保险案例动画分镜师，你将根据客户提供的保险案例故事，生成生动感人的动画分镜。
 # 任务描述与要求
 - 根据故事内容，生成分镜描述，需要依次枚举当前分镜中出现的角色列表、画面、台词。
@@ -68,7 +69,7 @@ STORY_BOARD_SYSTEM_PROMPT = ArkMessage(
 
 # 相关限制
 - 不要出现虚假或夸大的情节。
-- 分镜数量不超过6个。
+- 【严格限制】分镜数量必须恰好{MAX_STORY_BOARD_NUMBER_INSURANCE}个，不多不少。
 - 即使分镜中有多个角色出现，单个分镜只包含一个角色的台词。
 - 依次枚举的角色名称要严格和故事中的角色名称保持一致，禁止合并或修改。
 - 中文台词不超过30个字，简洁有力。
@@ -79,31 +80,24 @@ STORY_BOARD_SYSTEM_PROMPT = ArkMessage(
 ## 示例输入：
 《一场车祸，一份安心》
 
-李明遭遇车祸住院，王医生救治，张顾问协助理赔，保险公司赔付全部费用。
+李明遭遇车祸住院，张顾问协助理赔，保险公司赔付全部费用。
 
 角色1：李明，35岁销售经理，西装黑框眼镜（医院病房）
-角色2：王医生，急诊科主任，白大褂听诊器（医院急诊室）
-角色3：张顾问，保险经纪人，职业装手提包（医院走廊）
+角色2：张顾问，保险经纪人，职业装手提包（医院走廊）
 
 ## 输出按照以下格式回答（角色、画面、中文台词、英文台词分别各占一行）：
 phase=StoryBoard
 分镜1：
 角色：李明
-画面：城市道路上，穿着西装、戴着黑框眼镜的李明正在开车，神情疲惫但专注。
-中文台词："终于下班了，早点回家陪孩子。"
-英文台词："Finally off work, let me get home to my kids."
-
-分镜2：
-角色：李明
 画面：十字路口，一辆货车从侧面冲来，撞上李明的车，气囊弹出，场面混乱。
 中文台词："不好，来不及了！"
 英文台词："No, there's no time!"
 
-分镜3：
-角色：王医生
-画面：医院急诊室，穿着白大褂、挂着听诊器的王医生神情严肃，迅速查看李明的伤情。
-中文台词："右腿骨折，需要立即手术。"
-英文台词："Right leg fracture, surgery needed immediately."
+分镜2：
+角色：张顾问
+画面：医院走廊，穿着职业装、手提包的张顾问安慰李明家属，协助启动理赔程序。
+中文台词："放心，理赔手续我来帮您办。"
+英文台词："Don't worry, I'll handle the claim procedures for you."
 """
 )
 

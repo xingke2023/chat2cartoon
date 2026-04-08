@@ -69,6 +69,13 @@ const searchingText = '正在搜索';
 export const ChatWindowV2 = ({ children, onSendMessage, assistant, url }: IProps) => {
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<(UserMessage | BotMessage)[]>([]);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const referenceImageRef = useRef<string | null>(null);
+
+  const updateReferenceImage = (base64: string | null) => {
+    referenceImageRef.current = base64;
+    setReferenceImage(base64);
+  };
 
   const abortRef = useRef(new AbortController());
   const messagesRef = useRef<(UserMessage | BotMessage)[]>(messages);
@@ -241,7 +248,12 @@ export const ChatWindowV2 = ({ children, onSendMessage, assistant, url }: IProps
       messages: [...meaningfulMessages],
       model: 'ep-20260219054427-j546d',
       stream: true,
-      ...(assistant?.Extra?.Mode ? { metadata: { mode: assistant.Extra.Mode } } : {}),
+      ...(assistant?.Extra?.Mode ? {
+        metadata: {
+          mode: assistant.Extra.Mode,
+          ...(referenceImageRef.current ? { reference_image: referenceImageRef.current } : {}),
+        }
+      } : {}),
     };
 
     onSendMessage?.();
@@ -400,6 +412,8 @@ export const ChatWindowV2 = ({ children, onSendMessage, assistant, url }: IProps
         retryMessage,
         removeLoadingCardInVersions,
         assistantInfo: assistant,
+        referenceImage,
+        updateReferenceImage,
       }}
     >
       {children}

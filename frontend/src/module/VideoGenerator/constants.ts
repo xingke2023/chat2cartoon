@@ -15,6 +15,7 @@ export const MODE_CHILDREN_STORY = 'children_story';
 export const MODE_INSURANCE_CASE = 'insurance_case';
 export const MODE_STORY_NARRATION = 'story_narration';
 export const MODE_TEXT_TO_STORYBOARD = 'text_to_storyboard';
+export const MODE_TEXT_TO_VIDEO = 'text_to_video';
 
 export const MODE_CONFIG = {
   [MODE_CHILDREN_STORY]: {
@@ -44,6 +45,13 @@ export const MODE_CONFIG = {
     description: '将您的原始文案按段落分镜，生成配音动画视频',
     openingRemark: '你好！请直接粘贴您的文案原文，我来将它合理分段，每段生成一个分镜画面，并制作成配音动画视频~',
     openingQuestions: ['（在此粘贴您的文案原文，系统将自动分段生成分镜）'],
+  },
+  [MODE_TEXT_TO_VIDEO]: {
+    name: '原文视频',
+    assistantName: '原文视频生成器',
+    description: '将您的原始文案按段落分镜，生成配音动态视频（卡通风格）',
+    openingRemark: '你好！请直接粘贴您的文案原文，我来将它合理分段，每段生成一个动态视频画面，并配上原文朗读~',
+    openingQuestions: ['（在此粘贴您的文案原文，系统将自动分段生成动态视频）'],
   },
 };
 import {

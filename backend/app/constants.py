@@ -26,6 +26,8 @@ LLM_ENDPOINT_ID = os.getenv("LLM_ENDPOINT_ID", "")
 VLM_ENDPOINT_ID = os.getenv("VLM_ENDPOINT_ID", "")
 CGT_ENDPOINT_ID = os.getenv("CGT_ENDPOINT_ID", "")
 T2V_ENDPOINT_ID = os.getenv("T2V_ENDPOINT_ID", "")
+REALISTIC_T2I_ENDPOINT_ID = os.getenv("REALISTIC_T2I_ENDPOINT_ID", "")
+REALISTIC_T2I_MODEL = os.getenv("REALISTIC_T2I_MODEL", "doubao-seedream-4-0-250828")
 
 API_KEY = os.getenv("API_KEY", "")
 
@@ -41,11 +43,15 @@ ONE_DAY_IN_SECONDS = 60 * 60 * 24
 IMAGE_SIZE_LIMIT = 10 * 1024 * 1024  # 10MB
 MAX_STORY_BOARD_NUMBER = 15
 MAX_STORY_BOARD_NUMBER_EXTENDED = 30  # Used by text_to_storyboard mode
+MAX_STORY_BOARD_NUMBER_NARRATION = 2  # Used by story_narration mode
+MAX_STORY_BOARD_NUMBER_INSURANCE = 2  # Used by insurance_case mode
+MAX_STORY_BOARD_NUMBER_TEXT_TO_VIDEO = 30  # Used by text_to_video mode
 
 MODE_CHILDREN_STORY = "children_story"
 MODE_INSURANCE_CASE = "insurance_case"
 MODE_STORY_NARRATION = "story_narration"
 MODE_TEXT_TO_STORYBOARD = "text_to_storyboard"
+MODE_TEXT_TO_VIDEO = "text_to_video"
 
 SUBTITLE_CN_FONT_SIZE = int(os.getenv("SUBTITLE_CN_FONT_SIZE", "40"))
 SUBTITLE_EN_FONT_SIZE = int(os.getenv("SUBTITLE_EN_FONT_SIZE", "28"))

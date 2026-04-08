@@ -200,11 +200,12 @@ def _prepare_panel(args):
     video_duration = _get_video_duration(video_path)
     audio_duration = _get_video_duration(audio_path)
 
-    # Use the video duration; trim audio if longer, pad silence if shorter
-    duration = video_duration
+    # Use the audio duration as the authoritative length so narration is never cut off.
+    # If the video is shorter than the audio, loop the video to cover the full audio.
+    duration = audio_duration
 
-    if audio_duration >= video_duration:
-        # Trim audio to video length
+    if video_duration >= audio_duration:
+        # Video is long enough — trim it to audio length
         subprocess.run(
             [
                 "ffmpeg", "-y",
@@ -220,19 +221,19 @@ def _prepare_panel(args):
             capture_output=True, check=True,
         )
     else:
-        # Pad audio with silence to reach video duration
-        pad_duration = video_duration - audio_duration
+        # Video is shorter than audio — freeze the last frame for the remaining duration
+        freeze_duration = audio_duration - video_duration
         subprocess.run(
             [
                 "ffmpeg", "-y",
                 "-i", video_path,
                 "-i", audio_path,
-                "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=stereo:d={pad_duration}",
-                "-filter_complex", "[1:a][2:a]concat=n=2:v=0:a=1[aout]",
+                "-vf", f"tpad=stop_mode=clone:stop_duration={freeze_duration}",
                 "-map", "0:v:0",
-                "-map", "[aout]",
+                "-map", "1:a:0",
                 "-t", str(duration),
-                "-c:v", "copy",
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
                 "-c:a", "aac",
                 output_path,
             ],

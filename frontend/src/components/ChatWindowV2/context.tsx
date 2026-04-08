@@ -144,6 +144,14 @@ export interface ChatWindowContextType {
    */
   removeLoadingCardInVersions: (versionIdx: number) => void;
   assistantInfo: Assistant;
+  /**
+   * 参考图 base64，用于写实风格图生图
+   */
+  referenceImage: string | null;
+  /**
+   * 更新参考图（base64），用于写实风格图生图
+   */
+  updateReferenceImage: (base64: string | null) => void;
 }
 
 export const ChatWindowContext = createContext<ChatWindowContextType>({} as unknown as never);

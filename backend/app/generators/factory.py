@@ -11,7 +11,7 @@
 
 from arkitect.core.component.llm import ArkChatRequest
 
-from app.constants import MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
+from app.constants import MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO
 from app.generators.base import Generator
 from app.generators.phase import Phase
 from app.generators.phases.audio import AudioGenerator
@@ -67,6 +67,15 @@ text_to_storyboard_generator_map = {
     **story_narration_generator_map,
 }
 
+# text_to_video mode: same as default pipeline (with real video generation),
+# but uses text_to_storyboard-style prompts (original text preserved verbatim)
+text_to_video_generator_map = {
+    **generator_map,
+    Phase.SCRIPT: ScriptGenerator,
+    Phase.STORY_BOARD: StoryBoardGenerator,
+    Phase.ROLE_DESCRIPTION: RoleDescriptionGenerator,
+}
+
 
 class GeneratorFactory:
     phase: Phase
@@ -83,6 +92,8 @@ class GeneratorFactory:
             g_class = story_narration_generator_map.get(self.phase)
         elif content_mode == MODE_TEXT_TO_STORYBOARD:
             g_class = text_to_storyboard_generator_map.get(self.phase)
+        elif content_mode == MODE_TEXT_TO_VIDEO:
+            g_class = text_to_video_generator_map.get(self.phase)
         else:
             g_class = generator_map.get(self.phase)
 

@@ -14,7 +14,7 @@ from typing import AsyncIterable
 from arkitect.types.llm.model import ArkChatRequest, ArkChatResponse, ArkMessage
 
 from app.clients.llm import LLMClient
-from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
+from app.constants import LLM_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.generators.phases.common import get_correction_completion_chunk
@@ -22,6 +22,7 @@ from app.mode import Mode
 from app.generators.prompts.insurance_case import ROLE_DESCRIPTION_SYSTEM_PROMPT as INSURANCE_ROLE_DESC_PROMPT
 from app.generators.prompts.story_narration import ROLE_DESCRIPTION_SYSTEM_PROMPT as STORY_NARRATION_ROLE_DESC_PROMPT
 from app.generators.prompts.text_to_storyboard import ROLE_DESCRIPTION_SYSTEM_PROMPT as TEXT_TO_STORYBOARD_ROLE_DESC_PROMPT
+from app.generators.prompts.text_to_video import ROLE_DESCRIPTION_SYSTEM_PROMPT as TEXT_TO_VIDEO_ROLE_DESC_PROMPT
 
 ROLE_DESCRIPTION_SYSTEM_PROMPT = ArkMessage(
     role="system",
@@ -82,6 +83,8 @@ class RoleDescriptionGenerator(Generator):
             self.system_prompt = STORY_NARRATION_ROLE_DESC_PROMPT
         elif content_mode == MODE_TEXT_TO_STORYBOARD:
             self.system_prompt = TEXT_TO_STORYBOARD_ROLE_DESC_PROMPT
+        elif content_mode == MODE_TEXT_TO_VIDEO:
+            self.system_prompt = TEXT_TO_VIDEO_ROLE_DESC_PROMPT
         else:
             self.system_prompt = ROLE_DESCRIPTION_SYSTEM_PROMPT
 

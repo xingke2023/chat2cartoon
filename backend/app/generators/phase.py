@@ -182,9 +182,23 @@ class PhaseFinder:
         return role_description_text
 
     def get_role_images(self) -> List[RoleImage]:
+        # First try current user message (REGENERATION mode)
         dict_content = self.get_dict_from_message()
         role_images_json = dict_content.get("role_images", [])
-        return [RoleImage.model_validate(ri) for ri in role_images_json]
+        if role_images_json:
+            return [RoleImage.model_validate(ri) for ri in role_images_json]
+        # Fall back to the RoleImage phase assistant message in history
+        phase_entry = self.phase_message.get(Phase.ROLE_IMAGE)
+        if phase_entry:
+            _, msg = phase_entry
+            try:
+                raw = msg.content.split('\n\n', 1)[-1].strip()
+                data = extract_dict_from_message(raw)
+                role_images_json = data.get("role_images", [])
+                return [RoleImage.model_validate(ri) for ri in role_images_json]
+            except Exception:
+                pass
+        return []
 
     def get_first_frame_descriptions(self) -> Tuple[str, List[FirstFrameDescription]]:
         dict_content = self.get_dict_from_message()

@@ -52,7 +52,7 @@ import {
 import FlowItemTitle from '../FlowItemTitle';
 import LoadingFilm from '../LoadingFilm';
 import useFlowPhaseData from './useFlowPhaseData';
-import { MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD } from '../../constants';
+import { MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO } from '../../constants';
 
 interface Props {
   messages: ComplexMessage;
@@ -68,10 +68,33 @@ const FlowPhaseMap = [
 
 const VideoGenerateFlow = (props: Props) => {
   const { messages } = props;
-  const { assistantInfo } = useContext(ChatWindowContext);
+  const { assistantInfo, referenceImage, updateReferenceImage } = useContext(ChatWindowContext);
   const assistantData = assistantInfo as Assistant & { Extra?: any };
   const contentMode = assistantData?.Extra?.Mode ?? '';
   const isVideoSkipped = contentMode === MODE_STORY_NARRATION || contentMode === MODE_TEXT_TO_STORYBOARD;
+  const isRealisticMode = assistantData?.Extra?.IsRealistic === true;
+  const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
+
+  const handleReferenceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = (evt.target?.result as string)?.split(',')[1];
+      if (base64) {
+        updateReferenceImage(base64);
+        setReferenceImagePreview(evt.target?.result as string);
+        // 写实模式下，若正在等待参考图，上传后自动继续流程
+        if (isRealisticMode && finishPhase === VideoGeneratorTaskPhase.PhaseRoleDescription) {
+          updateAutoNext(true);
+          proceedNextPhase(VideoGeneratorTaskPhase.PhaseRoleDescription);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-uploaded
+    e.target.value = '';
+  };
 
   // 是否需要提示重新生成
   const [firstFrameDescriptionRegenerateState, setFirstFrameDescriptionRegenerateState] = useState<number>(0);
@@ -302,12 +325,41 @@ const VideoGenerateFlow = (props: Props) => {
         />
       ),
       phase: FlowPhase.GenerateRole,
-      content:
-        generateRolePhaseData.length > 0
-          ? active => {
+      content: (isRealisticMode || generateRolePhaseData.length > 0) ? (active => {
               const roleImages = userConfirmData?.[UserConfirmationDataKey.RoleImage];
 
               return (
+                <div>
+                {isRealisticMode && (
+                  <div style={{ margin: '8px 0' }}>
+                    {finishPhase === VideoGeneratorTaskPhase.PhaseRoleDescription && !referenceImagePreview && (
+                      <div style={{ padding: '10px 14px', marginBottom: 8, background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.4)', borderRadius: 10, fontSize: 13, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>⚠️</span>
+                        <span>请上传参考图以继续生成角色形象，参考图用于保持人物风格一致</span>
+                      </div>
+                    )}
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, background: finishPhase === VideoGeneratorTaskPhase.PhaseRoleDescription && !referenceImagePreview ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.06)', border: finishPhase === VideoGeneratorTaskPhase.PhaseRoleDescription && !referenceImagePreview ? '1px solid rgba(251,191,36,0.4)' : '1px solid transparent', borderRadius: 12 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#fff', opacity: 0.85 }}>
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleReferenceImageUpload} />
+                        {referenceImagePreview ? (
+                          <img src={referenceImagePreview} alt="参考图" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)' }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, borderRadius: 6, border: '1px dashed rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>＋</div>
+                        )}
+                        <span>{referenceImagePreview ? '已上传参考图，点击更换' : '上传参考图（生成角色形象必需）'}</span>
+                      </label>
+                      {referenceImagePreview && (
+                        <button
+                          style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                          onClick={() => { updateReferenceImage(null); setReferenceImagePreview(null); }}
+                        >
+                          移除
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {generateRolePhaseData.length > 0 && referenceImagePreview && (
                 <CardScrollList
                   id={FlowPhase.GenerateRole}
                   list={generateRolePhaseData.map((item, index) => {
@@ -374,9 +426,10 @@ const VideoGenerateFlow = (props: Props) => {
                   })}
                   isActive={active}
                 />
+                )}
+                </div>
               );
-            }
-          : undefined,
+            }) : undefined,
     },
     {
       id: FlowPhase.GenerateStoryBoardImage,

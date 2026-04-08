@@ -26,7 +26,7 @@ from volcenginesdkarkruntime import Ark
 from app.clients.ark_console import ArkConsoleClient, CreateVideoGenTaskRequest, TosLocation, TosConfig
 from app.clients.downloader import DownloaderClient
 from app.clients.tos import TOSClient
-from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, CGT_ENDPOINT_ID, MODE_TEXT_TO_STORYBOARD
+from app.constants import ARTIFACT_TOS_BUCKET, MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, MAX_STORY_BOARD_NUMBER_TEXT_TO_VIDEO, API_KEY, CGT_ENDPOINT_ID, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO
 from app.generators.base import Generator
 from app.generators.phase import Phase, PhaseFinder
 from app.logger import ERROR, INFO
@@ -105,7 +105,12 @@ class VideoGenerator(Generator):
         self.request = request
         self.mode = mode
         content_mode = request.metadata.get("mode", "") if request.metadata else ""
-        self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED if content_mode == MODE_TEXT_TO_STORYBOARD else MAX_STORY_BOARD_NUMBER
+        if content_mode == MODE_TEXT_TO_STORYBOARD:
+            self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_EXTENDED
+        elif content_mode == MODE_TEXT_TO_VIDEO:
+            self.max_storyboard_num = MAX_STORY_BOARD_NUMBER_TEXT_TO_VIDEO
+        else:
+            self.max_storyboard_num = MAX_STORY_BOARD_NUMBER
 
     async def generate(self) -> AsyncIterable[ArkChatResponse]:
         first_frame_images = self.phase_finder.get_first_frame_images()

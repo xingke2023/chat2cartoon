@@ -44,7 +44,11 @@ def parse_storyboards(completions: str) -> List[StoryBoard]:
 
 def parse_role_description(completions: str) -> List[RoleDescription]:
     descriptions = re.findall(r"角色描述[：:](.*)", completions)
-    role_descriptions = [RoleDescription(description=d) for d in descriptions]
+    names = re.findall(r"^角色[：:](.*)", completions, re.MULTILINE)
+    role_descriptions = [
+        RoleDescription(name=n.strip(), description=d)
+        for d, n in zip_longest(descriptions, names, fillvalue="")
+    ]
     return role_descriptions
 
 

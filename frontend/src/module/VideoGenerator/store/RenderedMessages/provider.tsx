@@ -60,6 +60,8 @@ const RenderedMessagesProvider = (props: PropsWithChildren<Props>) => {
     insertBotEmptyMessage,
     startReply,
     resetMessage,
+    referenceImage,
+    assistantInfo,
   } = useContext(ChatWindowContext);
   const dbInstance = useIndexedDB(storeUniqueId);
   const mediaRelevance = useMediaRelevance(storeUniqueId);
@@ -586,9 +588,15 @@ const RenderedMessagesProvider = (props: PropsWithChildren<Props>) => {
       ].includes(phase as VideoGeneratorTaskPhase) &&
       autoNextRef.current
     ) {
-      // 以上 phase 有自动化
-      // 这些阶段，需要主动传入资源信息，进行下一步
-      proceedNextPhase(phase);
+      // 写实模式下，角色描述完成后若无参考图，暂停等待用户上传
+      const isRealistic = (assistantInfo as any)?.Extra?.IsRealistic === true;
+      if (phase === VideoGeneratorTaskPhase.PhaseRoleDescription && isRealistic && !referenceImage) {
+        updateAutoNext(false);
+      } else {
+        // 以上 phase 有自动化
+        // 这些阶段，需要主动传入资源信息，进行下一步
+        proceedNextPhase(phase);
+      }
     }
 
     // 本次生成结束

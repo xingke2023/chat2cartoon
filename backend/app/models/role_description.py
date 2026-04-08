@@ -13,4 +13,5 @@ from pydantic import BaseModel
 
 
 class RoleDescription(BaseModel):
+    name: str = ""
     description: str

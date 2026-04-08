@@ -12,19 +12,20 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Helmet } from '@modern-js/runtime/head';
 import { v4 as uuidV4 } from 'uuid';
-import { useSpring, animated, config } from '@react-spring/web';
+import { useSpring, animated, config as springConfig } from '@react-spring/web';
 import VideoGenerator from '@/module/VideoGenerator';
 import doubaoLogo from '@/images/assets/doubao_logo.png';
 
 import './index.css';
 import { GetVideoGenTask } from '@/services/getVideoGenTask';
-import { 
-  MODE_CHILDREN_STORY, 
-  MODE_INSURANCE_CASE, 
-  MODE_STORY_NARRATION, 
-  MODE_TEXT_TO_STORYBOARD, 
-  MODE_CONFIG, 
-  DEFAULT_EXTRA_INFO 
+import {
+  MODE_CHILDREN_STORY,
+  MODE_INSURANCE_CASE,
+  MODE_STORY_NARRATION,
+  MODE_TEXT_TO_STORYBOARD,
+  MODE_TEXT_TO_VIDEO,
+  MODE_CONFIG,
+  DEFAULT_EXTRA_INFO
 } from '@/module/VideoGenerator/constants';
 
 const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || '';
@@ -48,7 +49,7 @@ const Card = ({ mode, config: modeConfig, onSelect, colorIndex }: {
     border: hovered
       ? '1px solid rgba(255, 255, 255, 0.3)'
       : '1px solid rgba(255, 255, 255, 0.1)',
-    config: config.gentle,
+    config: springConfig.gentle,
   });
 
   const iconGradients = [
@@ -58,11 +59,13 @@ const Card = ({ mode, config: modeConfig, onSelect, colorIndex }: {
     'linear-gradient(135deg, #f59e0b, #ef4444)',
   ];
 
-  const icons = {
+  const icons: Record<string, string> = {
     [MODE_CHILDREN_STORY]: '🧸',
     [MODE_INSURANCE_CASE]: '🛡️',
     [MODE_STORY_NARRATION]: '🇭🇰',
     [MODE_TEXT_TO_STORYBOARD]: '📄',
+    [MODE_TEXT_TO_VIDEO]: '🎬',
+    [`${MODE_TEXT_TO_VIDEO}_realistic`]: '🎥',
   };
 
   return (
@@ -190,6 +193,23 @@ const Index = () => {
     localStorage.setItem('ark-interactive-video-store-key', storeKey);
   }, [storeKey]);
 
+  const modes = [
+    { key: MODE_CHILDREN_STORY, config: MODE_CONFIG[MODE_CHILDREN_STORY] },
+    { key: MODE_INSURANCE_CASE, config: MODE_CONFIG[MODE_INSURANCE_CASE] },
+    { key: MODE_STORY_NARRATION, config: MODE_CONFIG[MODE_STORY_NARRATION] },
+    { key: MODE_TEXT_TO_STORYBOARD, config: MODE_CONFIG[MODE_TEXT_TO_STORYBOARD] },
+    { key: MODE_TEXT_TO_VIDEO, config: MODE_CONFIG[MODE_TEXT_TO_VIDEO] },
+    {
+      key: `${MODE_TEXT_TO_VIDEO}_realistic`,
+      config: {
+        ...MODE_CONFIG[MODE_TEXT_TO_VIDEO],
+        name: '原文写实视频',
+        description: '将您的原始文案生成写实风格动态视频，可上传参考图保持人物一致',
+        openingRemark: '你好！请直接粘贴您的文案原文，我来将它合理分段，每段生成一个写实风格视频画面，并配上原文朗读~',
+      },
+    },
+  ];
+
   const handleSelectMode = (mode: string) => {
     if (authed) {
       setSelectedMode(mode);
@@ -216,7 +236,10 @@ const Index = () => {
   };
 
   if (selectedMode) {
-    const config = MODE_CONFIG[selectedMode as keyof typeof MODE_CONFIG];
+    // Strip _realistic suffix for backend mode — realistic is a frontend-only style flag
+    const backendMode = selectedMode.replace(/_realistic$/, '');
+    const selectedModeConfig = modes.find(m => m.key === selectedMode)?.config;
+    const config = selectedModeConfig ?? MODE_CONFIG[backendMode as keyof typeof MODE_CONFIG];
     return (
       <div>
         <Helmet>
@@ -275,7 +298,8 @@ const Index = () => {
                   OpeningQuestions: config.openingQuestions,
                 },
                 Extra: {
-                  Mode: selectedMode,
+                  Mode: backendMode,
+                  IsRealistic: selectedMode.endsWith('_realistic'),
                   Models: DEFAULT_EXTRA_INFO.Models,
                   Tones: DEFAULT_EXTRA_INFO.Tones,
                 },
@@ -293,11 +317,6 @@ const Index = () => {
       </div>
     );
   }
-
-  const modes = [
-    { key: MODE_STORY_NARRATION, config: MODE_CONFIG[MODE_STORY_NARRATION] },
-    { key: MODE_TEXT_TO_STORYBOARD, config: MODE_CONFIG[MODE_TEXT_TO_STORYBOARD] },
-  ];
 
   return (
     <div>

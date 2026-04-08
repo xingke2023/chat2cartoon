@@ -38,55 +38,82 @@ npm run lint                       # Biome linter
 ```
 
 ### Environment
-Both frontend and backend read from `.env` at the repo root. Copy it to `frontend/` for the dev server. Required vars: `LLM_ENDPOINT_ID`, `VLM_ENDPOINT_ID`, `T2V_ENDPOINT_ID`, `API_KEY`, `ARK_API_KEY`, `TOS_*`, `TTS_*`.
+Both frontend and backend read from `.env` at the repo root. Copy it to `frontend/` for the dev server. Required vars: `LLM_ENDPOINT_ID`, `VLM_ENDPOINT_ID`, `T2V_ENDPOINT_ID`, `CGT_ENDPOINT_ID`, `API_KEY`, `ARK_API_KEY`, `TOS_*`, `TTS_*`.
 
 ## Architecture
 
 ### Overview
-Chat2Cartoon is a bilingual video generator that takes a user-provided topic and produces an animated story through a **12-phase sequential pipeline**. It supports two content modes: **children_story** (default) and **insurance_case**, selected on the homepage.
+Chat2Cartoon is a bilingual video generator that takes a user-provided topic and produces an animated story through a **12-phase sequential pipeline**. The homepage offers **6 content modes** selectable as cards.
+
+### Content Modes
+All mode constants are in `backend/app/constants.py` and `frontend/src/module/VideoGenerator/constants.ts`.
+
+| Mode key | Name | Pipeline variant |
+|---|---|---|
+| `children_story` | 儿童故事 | Default (video + storybook film) |
+| `insurance_case` | 保险案例 | Default with urban 3D art style, 2-storyboard limit |
+| `story_narration` | 港险案例分镜制作 | No video: SkipVideo → StorybookFilmGenerator, 2-storyboard limit |
+| `text_to_storyboard` | 原文分镜 | Same as story_narration, preserves original text verbatim, 30-storyboard limit |
+| `text_to_video` | 原文视频 | Real video generation, preserves original text verbatim, 30-storyboard limit |
+| `text_to_video` (IsRealistic=true) | 原文写实视频 | Same as text_to_video with realistic art style + optional reference image (image-to-image) |
+
+The "原文写实视频" card on the homepage uses `backendMode = "text_to_video"` with `Extra.IsRealistic = true`. The frontend `VideoGenerateFlow` uses `assistantData?.Extra?.IsRealistic` to show the reference image upload UI.
 
 ### Request Flow
-1. Frontend sends `POST /api/v3/bots/chat/completions` with full conversation history and optional `metadata: { mode }`.
+1. Frontend sends `POST /api/v3/bots/chat/completions` with full conversation history and `metadata: { mode, reference_image? }`.
 2. Backend (`index.py → main()`) inspects the last user message to determine `Mode` (CONFIRMATION or REGENERATION), then uses `PhaseFinder` to identify the next phase from conversation history.
-3. `GeneratorFactory` maps the phase to a generator class and streams the response back via SSE.
-4. Frontend state machine (XState, in `WatchAndChat/`) handles each streamed response and advances the UI.
+3. `GeneratorFactory` maps `(phase, content_mode)` to a generator class and streams the response back via SSE.
+4. Frontend state machine in `store/RenderedMessages/provider.tsx` handles each streamed response and advances the UI.
 
 ### Phase Pipeline (`backend/app/generators/phases/`)
 Phases run in order; each generator reads prior phase outputs from conversation history via `PhaseFinder`:
 
 | Phase | Generator | What it does |
 |---|---|---|
-| Script, StoryBoard, RoleDescription | `InitiationGenerator` → routes to specific generator | LLM classifies user intent then generates content |
-| RoleImage, FirstFrameImage | `RoleImageGenerator`, `FirstFrameImageGenerator` | Text-to-image API calls (parallel) |
-| FirstFrameDescription, VideoDescription | Dedicated generators | LLM refines descriptions for image/video prompts |
-| Video | `VideoGenerator` | Video generation API |
-| Tone | `ToneGenerator` | LLM selects TTS voices per character |
-| Audio | `AudioGenerator` | TTS synthesis |
-| Film | `FilmGenerator` | MoviePy assembles final video with subtitles |
+| Script, StoryBoard, RoleDescription | `ScriptGenerator` / `StoryBoardGenerator` / `RoleDescriptionGenerator` (direct, no intent classification) | LLM generates content using mode-specific prompt |
+| RoleImage | `RoleImageGenerator` | Text-to-image; passes `reference_image` via `extra_body` if provided in metadata |
+| FirstFrameDescription | `FirstFrameDescriptionGenerator` | LLM refines descriptions for image prompts |
+| FirstFrameImage | `FirstFrameImageGenerator` | Text-to-image (or image-to-image with reference); same `reference_image` logic |
+| VideoDescription | `VideoDescriptionGenerator` or `SkipVideoDescriptionGenerator` | LLM generates video motion prompts, or skipped |
+| Video | `VideoGenerator` or `SkipVideoGenerator` | Video generation API (`CGT_ENDPOINT_ID`), or skipped |
+| Tone | `ToneGenerator` | LLM selects TTS voice; for narration/text modes, overwrites LLM-chosen lines with verbatim StoryBoard text |
+| Audio | `AudioGenerator` | TTS synthesis (parallel) |
+| Film | `FilmGenerator` or `StorybookFilmGenerator` | ffmpeg assembles final video; `FilmGenerator` uses AI videos + freezes last frame when video < audio duration; `StorybookFilmGenerator` uses static first-frame images |
 | FilmInteraction | `FilmInteractionGenerator` | VLM-based Q&A about the generated film |
 
-### Multi-Mode System
-- Mode is passed as `request.metadata["mode"]` from the frontend.
-- Each phase generator reads `content_mode = request.metadata.get("mode", "")` in `__init__` and selects between the children story prompt (default, defined in the phase file) and the insurance case prompt (from `backend/app/generators/prompts/insurance_case.py`).
-- Mode constants live in `backend/app/constants.py` (`MODE_CHILDREN_STORY`, `MODE_INSURANCE_CASE`) and `frontend/src/module/VideoGenerator/constants.ts` (`MODE_CONFIG`).
-- Frontend attaches `metadata` in `ChatWindowV2/index.tsx → startReply()` via `assistant.Extra.Mode`.
+### Adding a New Mode
+1. `backend/app/constants.py` — add `MODE_*` constant and `MAX_STORY_BOARD_NUMBER_*` if needed
+2. `backend/app/generators/prompts/` — create new prompt file with all phase prompts
+3. `backend/app/generators/factory.py` — add a generator map and a branch in `get_generator()`
+4. Each phase generator (`script.py`, `storyboard.py`, `role_description.py`, `first_frame_description.py`, `tone.py`, `role_image.py`, `first_frame_image.py`) — add an `elif content_mode == MODE_*` branch
+5. `frontend/src/module/VideoGenerator/constants.ts` — add mode constant and `MODE_CONFIG` entry
+6. `frontend/src/routes/page.tsx` — add entry to `modes` array
+
+### Multi-Mode Prompt System
+Each phase generator imports mode-specific prompts at the top and selects via `content_mode` in `__init__`. Prompts live in `backend/app/generators/prompts/<mode_name>.py`. The default (children_story) prompt is defined inline in the phase file itself.
+
+### Reference Image (写实风格)
+- Frontend: `ChatWindowV2/index.tsx` maintains `referenceImage` state; `updateReferenceImage()` is exposed via `ChatWindowContext`. `startReply()` includes it as `metadata.reference_image` (base64).
+- Backend: `RoleImageGenerator` and `FirstFrameImageGenerator` read `request.metadata.get("reference_image")` and pass it to `T2IClient.image_generation()` via `extra_body={"reference_image": base64}`.
+- Upload UI appears in `VideoGenerateFlow/index.tsx` when `assistantData?.Extra?.IsRealistic === true`.
 
 ### Message Protocol
 - **Assistant messages** are prefixed: `phase=Script`, `phase=StoryBoard`, etc. `PhaseFinder` scans conversation history for these prefixes to reconstruct state.
-- **User messages** for phase advancement: plain text (CONFIRMATION mode) or prefixed with `REGENERATION` + JSON payload (REGENERATION mode).
-- REGENERATION messages carry a JSON blob with existing assets so only missing ones are re-generated.
+- **User messages**: plain text (CONFIRMATION) or `REGENERATION phase=<X> {JSON}` with existing assets so only missing ones are re-generated.
+- `tone.py` special case: for `story_narration`, `text_to_storyboard`, `text_to_video` modes, Tone.line/line_en are forcibly overwritten with verbatim StoryBoard text after LLM inference to ensure audio matches original text exactly.
 
-### UI 细节
-
-#### UserMessage 步骤标题
-- 步骤标签文字：`frontend/src/module/VideoGenerator/components/UserMessage/index.tsx` 第 16 行的 `STEP_LABELS` 数组
-- 圆形数字图标样式：`frontend/src/module/VideoGenerator/components/UserMessage/index.module.less` 的 `.stepIndex` 类
-  - `width` / `height`：圆圈尺寸（当前 32px）
-  - `font-size`：圆圈内数字大小（当前 18px）
+### Film Assembly (`FilmGenerator` vs `StorybookFilmGenerator`)
+- `FilmGenerator`: uses AI-generated videos per storyboard. Audio is authoritative for duration — if video is shorter than audio, the last frame is frozen (`tpad=stop_mode=clone`) to cover remaining audio.
+- `StorybookFilmGenerator`: uses static first-frame images looped for audio duration. Both burn bilingual ASS subtitles via ffmpeg.
 
 ### Frontend Structure
-- `src/routes/page.tsx` — Homepage with mode selection cards; renders `VideoGenerator` with the chosen mode's config.
-- `src/module/VideoGenerator/` — Main module; `store/RenderedMessages/provider.tsx` drives the phase-by-phase UI flow by calling `sendMessageImplicitly` / `startReply`.
-- `src/components/ChatWindowV2/` — SSE streaming, message state management; `index.tsx` builds the request body including `metadata`.
-- `src/module/WatchAndChat/` — XState machine for the film interaction (watch + chat) phase after video is generated.
-- Dev proxy in `modern.config.ts`: `/api/v3/bots` → `http://localhost:8890`, `/api/v3/contents/generations/tasks` → Volcengine cloud.
+- `src/routes/page.tsx` — Homepage with mode selection cards; `modes` array defined early in the component (before any early returns); `backendMode` strips `_realistic` suffix before passing to `Extra.Mode`.
+- `src/module/VideoGenerator/` — Main module; `store/RenderedMessages/provider.tsx` drives phase-by-phase UI flow.
+- `src/components/ChatWindowV2/` — SSE streaming, message state, `metadata` construction, `referenceImage` state.
+- `src/module/VideoGenerator/components/VideoGenerateFlow/index.tsx` — Per-phase UI cards; reference image upload shown when `Extra.IsRealistic`.
+- `src/module/WatchAndChat/` — XState machine for film interaction phase.
+- Dev proxy in `modern.config.ts`: `/api/v3/bots` → `http://localhost:8890`.
+
+### UI Details
+- Step label text: `frontend/src/module/VideoGenerator/components/UserMessage/index.tsx` line 16 `STEP_LABELS` array
+- `isVideoSkipped` flag in `VideoGenerateFlow`: true for `story_narration` and `text_to_storyboard` — hides the video generation step in the UI flow

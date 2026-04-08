@@ -21,7 +21,7 @@ from volcenginesdkarkruntime.types.chat.chat_completion_chunk import ChoiceDelta
     ChoiceDeltaToolCallFunction
 
 from app.clients.t2i import T2IClient, T2IException
-from app.constants import MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, T2V_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
+from app.constants import MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, T2V_ENDPOINT_ID, REALISTIC_T2I_ENDPOINT_ID, REALISTIC_T2I_MODEL, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -75,10 +75,17 @@ class RoleImageGenerator(Generator):
             t2i_api_key = request.metadata.get("t2i_api_key", API_KEY)
             content_mode = request.metadata.get("mode", "")
         self.t2i_client = T2IClient(t2i_api_key)
-        self.t2i_model = T2V_ENDPOINT_ID
+        self.t2i_model = REALISTIC_T2I_ENDPOINT_ID if content_mode == MODE_TEXT_TO_VIDEO and REALISTIC_T2I_ENDPOINT_ID else T2V_ENDPOINT_ID
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        self.reference_image = request.metadata.get("reference_image") if request.metadata else None
+        self.content_mode = content_mode
+        # For text_to_video with reference image, pre-upload base64 to TOS to get a URL
+        self.reference_image_url: Optional[str] = None
+        if content_mode == MODE_TEXT_TO_VIDEO and self.reference_image:
+            self.reference_image_url = self.t2i_client.upload_base64_to_tos(self.reference_image)
+            INFO(f"reference image uploaded to TOS: {bool(self.reference_image_url)}")
         if content_mode == MODE_INSURANCE_CASE:
             self.image_style_suffix = "卡通风格插图，现代都市卡通风格，3D渲染。"
             self.image_size = "1440x2560"
@@ -87,6 +94,12 @@ class RoleImageGenerator(Generator):
             self.image_size = "1440x2560"
         elif content_mode == MODE_TEXT_TO_STORYBOARD:
             self.image_style_suffix = "卡通插画风格，色彩鲜明，画面感强。"
+            self.image_size = "1440x2560"
+        elif content_mode == MODE_TEXT_TO_VIDEO:
+            if self.reference_image:
+                self.image_style_suffix = "写实摄影风格，真实人物，电影质感，高清细节。"
+            else:
+                self.image_style_suffix = "写实摄影风格，真实人物，电影质感，高清细节。"
             self.image_size = "1440x2560"
         else:
             self.image_style_suffix = "卡通风格插图，3D渲染。"
@@ -109,6 +122,18 @@ class RoleImageGenerator(Generator):
         if len(role_descriptions) > self.max_storyboard_num:
             ERROR("role description count exceed limit")
             raise InvalidParameter("messages", "role description count exceed limit")
+
+        # text_to_video mode without reference image: skip role image generation
+        if self.content_mode == MODE_TEXT_TO_VIDEO and not self.reference_image:
+            INFO("text_to_video mode without reference image: skipping role image generation")
+            yield ArkChatCompletionChunk(
+                id=get_reqid(),
+                choices=[Choice(index=0, delta=ChoiceDelta(content=f"phase={Phase.ROLE_IMAGE.value}\n\n"))],
+                created=int(time.time()), model=get_resource_id(), object="chat.completion.chunk"
+            )
+            yield _get_tool_resp(0, json.dumps({"role_images": []}))
+            yield _get_tool_resp(1)
+            return
 
         # No-role mode: skip image generation entirely, emit empty role_images
         if self._is_no_role(role_descriptions):
@@ -176,8 +201,24 @@ class RoleImageGenerator(Generator):
 
     async def _generate_image(self, index: int, role_descriptions: List[RoleDescription]):
         try:
-            prompt = f"{role_descriptions[index].description}{self.image_style_suffix}"
-            images = self.t2i_client.image_generation(prompt=prompt, model=self.t2i_model, size=self.image_size)
+            desc = role_descriptions[index].description
+            if self.content_mode == MODE_TEXT_TO_VIDEO and self.reference_image_url:
+                # Use seedream image-to-image API with reference URL
+                prompt = f"与参考图人物外貌保持高度一致，{desc}{self.image_style_suffix}"
+                images = self.t2i_client.image_generation_with_reference_url(
+                    prompt=prompt,
+                    model=REALISTIC_T2I_MODEL,
+                    image_url=self.reference_image_url,
+                    size="2K",
+                )
+            else:
+                prompt = f"{desc}{self.image_style_suffix}"
+                images = self.t2i_client.image_generation(
+                    prompt=prompt,
+                    model=self.t2i_model,
+                    size=self.image_size,
+                    reference_image=self.reference_image or None,
+                )
         except T2IException as e:
             ERROR(f"failed to generate image, code: {e.code}, message: {e}")
             return index, [e.message]

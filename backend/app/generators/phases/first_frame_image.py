@@ -20,8 +20,8 @@ from arkitect.core.errors import InvalidParameter
 from volcenginesdkarkruntime.types.chat.chat_completion_chunk import ChoiceDelta, Choice, ChoiceDeltaToolCall, \
     ChoiceDeltaToolCallFunction
 
-from app.clients.t2i import T2IClient, T2IException
-from app.constants import MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, T2V_ENDPOINT_ID, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD
+from app.clients.t2i import T2IClient, T2IException, url_to_base64
+from app.constants import MAX_STORY_BOARD_NUMBER, MAX_STORY_BOARD_NUMBER_EXTENDED, API_KEY, T2V_ENDPOINT_ID, REALISTIC_T2I_ENDPOINT_ID, REALISTIC_T2I_MODEL, MODE_INSURANCE_CASE, MODE_STORY_NARRATION, MODE_TEXT_TO_STORYBOARD, MODE_TEXT_TO_VIDEO
 from app.generators.base import Generator
 from app.generators.phase import PhaseFinder, Phase
 from app.logger import ERROR, INFO
@@ -29,6 +29,8 @@ from app.message_utils import extract_dict_from_message
 from app.mode import Mode
 from app.models.first_frame_description import FirstFrameDescription
 from app.models.first_frame_image import FirstFrameImage
+from app.models.role_image import RoleImage
+from app.output_parsers import parse_role_description
 
 
 def _get_tool_resp(index: int, content: Optional[str] = None) -> ArkChatCompletionChunk:
@@ -74,9 +76,12 @@ class FirstFrameImageGenerator(Generator):
             t2i_api_key = request.metadata.get("t2i_api_key", API_KEY)
             content_mode = request.metadata.get("mode", "")
         self.t2i_client = T2IClient(t2i_api_key)
+        self.t2i_model = REALISTIC_T2I_ENDPOINT_ID if content_mode == MODE_TEXT_TO_VIDEO and REALISTIC_T2I_ENDPOINT_ID else T2V_ENDPOINT_ID
         self.phase_finder = PhaseFinder(request)
         self.request = request
         self.mode = mode
+        self.content_mode = content_mode
+        self.reference_image = request.metadata.get("reference_image") if request.metadata else None
         if content_mode == MODE_INSURANCE_CASE:
             self.image_style_suffix = "卡通风格插图，现代都市卡通风格，3D渲染。"
             self.image_size = "1440x2560"
@@ -85,6 +90,9 @@ class FirstFrameImageGenerator(Generator):
             self.image_size = "1440x2560"
         elif content_mode == MODE_TEXT_TO_STORYBOARD:
             self.image_style_suffix = "卡通插画风格，色彩鲜明，画面感强。"
+            self.image_size = "1440x2560"
+        elif content_mode == MODE_TEXT_TO_VIDEO:
+            self.image_style_suffix = "写实摄影风格，真实人物，电影质感，高清细节。"
             self.image_size = "1440x2560"
         else:
             self.image_style_suffix = "卡通风格插图，3D渲染。"
@@ -101,6 +109,15 @@ class FirstFrameImageGenerator(Generator):
         if len(first_frame_descriptions) > self.max_storyboard_num:
             ERROR("first frame description count exceed limit")
             raise InvalidParameter("messages", "first frame description count exceed limit")
+
+        # In text_to_video mode, load role images to use as per-storyboard reference
+        role_images: List[RoleImage] = []
+        role_names: List[str] = []
+        if self.content_mode == MODE_TEXT_TO_VIDEO:
+            role_images = self.phase_finder.get_role_images()
+            role_descriptions = parse_role_description(self.phase_finder.get_role_descriptions())
+            role_names = [rd.name for rd in role_descriptions]
+            INFO(f"role_images for first_frame: {[ri.index for ri in role_images]}, role_names: {role_names}")
 
         # handle case when some assets are already provided, only partial set of assets needs to be generated
         generated_first_frame_images: List[FirstFrameImage] = []
@@ -134,7 +151,7 @@ class FirstFrameImageGenerator(Generator):
         generated_first_frame_image_indexes = set([ffi.index for ffi in generated_first_frame_images])
         for index, rd in enumerate(first_frame_descriptions):
             if index not in generated_first_frame_image_indexes:
-                tasks.append(asyncio.create_task(self._generate_image(index, first_frame_descriptions)))
+                tasks.append(asyncio.create_task(self._generate_image(index, first_frame_descriptions, role_images, role_names)))
 
         pending = set(tasks)
         content = {
@@ -154,10 +171,55 @@ class FirstFrameImageGenerator(Generator):
         yield _get_tool_resp(0, json.dumps(content))
         yield _get_tool_resp(1)
 
-    async def _generate_image(self, index: int, first_frame_descriptions: List[FirstFrameDescription]):
+    def _find_role_image_url(self, characters: List[str], role_images: List[RoleImage], role_names: List[str]) -> Optional[str]:
+        """Find the best matching role image URL for the given characters."""
+        if not role_images:
+            return None
+        # Try to find a role image matching one of the storyboard's characters
+        for char in characters:
+            char = char.strip()
+            if not char or char == "无角色":
+                continue
+            for i, name in enumerate(role_names):
+                if char in name or name in char:
+                    matching = next((ri for ri in role_images if ri.index == i), None)
+                    if matching and matching.images:
+                        return matching.images[0]
+        # Fall back to first available role image
+        for ri in sorted(role_images, key=lambda x: x.index):
+            if ri.images:
+                return ri.images[0]
+        return None
+
+    async def _generate_image(self, index: int, first_frame_descriptions: List[FirstFrameDescription],
+                               role_images: Optional[List[RoleImage]] = None,
+                               role_names: Optional[List[str]] = None):
         try:
-            prompt = f"{first_frame_descriptions[index].description}{self.image_style_suffix}"
-            images = self.t2i_client.image_generation(prompt=prompt, model=T2V_ENDPOINT_ID, size=self.image_size)
+            desc = first_frame_descriptions[index]
+            if self.content_mode == MODE_TEXT_TO_VIDEO and role_images:
+                # Use role image URL as reference via seedream image-to-image API
+                role_image_url = self._find_role_image_url(desc.characters, role_images, role_names or [])
+                if role_image_url:
+                    prompt = f"与参考图人物外貌保持高度一致，{desc.description}{self.image_style_suffix}"
+                    images = self.t2i_client.image_generation_with_reference_url(
+                        prompt=prompt,
+                        model=REALISTIC_T2I_MODEL,
+                        image_url=role_image_url,
+                        size="2K",
+                    )
+                    return index, images
+            # Fallback: text-to-image
+            reference_image = self.reference_image or None
+            if reference_image:
+                prompt = f"与参考图人物外貌保持高度一致，{desc.description}{self.image_style_suffix}"
+            else:
+                prompt = f"{desc.description}{self.image_style_suffix}"
+            images = self.t2i_client.image_generation(
+                prompt=prompt,
+                model=self.t2i_model,
+                size=self.image_size,
+                reference_image=reference_image,
+            )
         except T2IException as e:
             ERROR(f"failed to generate image, code: {e.code}, message: {e}")
             return index, [e.message]

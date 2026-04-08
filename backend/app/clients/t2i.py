@@ -9,16 +9,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
+import io
 import json
+import uuid
 from json import JSONDecodeError
 from typing import Optional, List
 
+import requests
 from pydantic import BaseModel
 from volcengine.visual.VisualService import VisualService
 from volcenginesdkarkruntime import Ark
 
-from app.constants import ARK_ACCESS_KEY, ARK_SECRET_KEY
+from app.constants import ARK_ACCESS_KEY, ARK_SECRET_KEY, ARTIFACT_TOS_BUCKET
 from app.logger import INFO, ERROR
+
+
+def url_to_base64(url: str) -> Optional[str]:
+    """Download an image URL and return its base64-encoded content."""
+    try:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        return base64.b64encode(resp.content).decode("utf-8")
+    except Exception as e:
+        ERROR(f"failed to download image from url {url}: {e}")
+        return None
 
 _DEFAULT_REQ_KEY = "high_aes_general_v20_L"
 _DEFAULT_MODEL_VERSION = "general_v2.0_L"
@@ -39,22 +54,74 @@ class T2IException(Exception):
         return f"{self.args[0]} (Error Code: {self.code})"
 
 
+_ARK_IMAGE_API_URL = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
+
+
 class T2IClient:
     t2i_client: Ark
 
     def __init__(self, t2i_api_key: str) -> None:
         self.t2i_client = Ark(api_key=t2i_api_key, region="cn-beijing")
+        self.api_key = t2i_api_key
 
-    def image_generation(self, prompt: str, model: str, size: Optional[str] = None) -> List[str]:
+    def image_generation(self, prompt: str, model: str, size: Optional[str] = None,
+                         reference_image: Optional[str] = None) -> List[str]:
         """
         API Docs: https://www.volcengine.com/docs/82379/1541523
         size: e.g. "768x1344" for 9:16 portrait, "1344x768" for 16:9 landscape (default)
+        reference_image: base64-encoded image string for image-to-image generation
         """
         kwargs = dict(model=model, prompt=prompt)
         if size:
             kwargs["size"] = size
+        if reference_image:
+            kwargs["extra_body"] = {"reference_image": reference_image}
         images = self.t2i_client.images.generate(**kwargs)
         return [item.url for item in images.data]
+
+    def upload_base64_to_tos(self, base64_str: str) -> Optional[str]:
+        """Upload a base64-encoded image to TOS and return a pre-signed URL."""
+        try:
+            from app.clients.tos import TOSClient
+            image_bytes = base64.b64decode(base64_str)
+            object_key = f"reference_images/{uuid.uuid4().hex}.jpg"
+            tos_client = TOSClient()
+            tos_client.put_object(ARTIFACT_TOS_BUCKET, object_key, io.BytesIO(image_bytes))
+            url_output = tos_client.pre_signed_url(ARTIFACT_TOS_BUCKET, object_key)
+            return url_output.signed_url
+        except Exception as e:
+            ERROR(f"failed to upload reference image to TOS: {e}")
+            return None
+
+    def image_generation_with_reference_url(self, prompt: str, model: str, image_url: str,
+                                             size: Optional[str] = None) -> List[str]:
+        """
+        Image-to-image generation using doubao-seedream API.
+        Uses direct HTTP call with 'image' parameter (URL) instead of base64 reference_image.
+        """
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "image": image_url,
+            "sequential_image_generation": "disabled",
+            "response_format": "url",
+            "stream": False,
+            "watermark": False,
+        }
+        if size:
+            payload["size"] = size
+        resp = requests.post(
+            _ARK_IMAGE_API_URL,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            },
+            json=payload,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return [item["url"] for item in data.get("data", [])]
 
 
 class LogoInfo(BaseModel):
